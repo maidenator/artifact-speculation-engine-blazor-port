@@ -1,0 +1,262 @@
+.hunt-modal-backdrop {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+    background: rgba(0, 0, 0, 0.6);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 1000;
+}
+
+.hunt-modal {
+    background: #e9e5dc;
+    width: 100%;
+    max-width: 380px;
+    border-radius: 12px;
+    overflow: hidden;
+    box-shadow: 0 10px 25px rgba(0, 0, 0, 0.5);
+    display: flex;
+    flex-direction: column;
+}
+
+.hm-header {
+    background: #d5894b;
+    padding: 0.75rem 1rem;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    color: white;
+}
+
+.hm-header h3 {
+    margin: 0;
+    font-size: 15px;
+    font-weight: 700;
+    font-style: italic;
+}
+
+.hm-close {
+    background: rgba(0,0,0,0.1);
+    border: none;
+    color: white;
+    font-size: 18px;
+    width: 24px;
+    height: 24px;
+    border-radius: 50%;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.hm-close:hover {
+    background: rgba(0,0,0,0.2);
+}
+
+.hm-body {
+    padding: 0;
+    color: #495366;
+}
+
+.hm-slot-row {
+    background: #d5894b;
+    display: flex;
+    align-items: center;
+    padding: 0 1rem;
+    gap: 1rem;
+    padding-bottom: 1rem;
+}
+
+.hm-slot-icons {
+    display: flex;
+    gap: 0.5rem;
+}
+
+.hm-slot-btn {
+    background: transparent;
+    border: 2px solid transparent;
+    border-radius: 50%;
+    width: 32px;
+    height: 32px;
+    padding: 2px;
+    cursor: pointer;
+    opacity: 0.6;
+    transition: all 0.2s;
+}
+
+.hm-slot-btn img {
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+    filter: brightness(0) invert(1);
+}
+
+.hm-slot-btn.active {
+    opacity: 1;
+    border-color: white;
+    background: rgba(255, 255, 255, 0.2);
+}
+
+.hm-slot-name {
+    color: white;
+    font-weight: 700;
+    font-size: 15px;
+    margin-left: auto;
+}
+
+.hm-main-display {
+    background: #d5894b;
+    display: flex;
+    justify-content: space-between;
+    padding: 0 1.5rem 1.5rem;
+    position: relative;
+}
+
+.hm-main-info {
+    color: white;
+    z-index: 2;
+}
+
+.hm-main-label {
+    font-size: 14px;
+    font-weight: 700;
+    opacity: 0.9;
+}
+
+.hm-main-val {
+    font-size: 32px;
+    font-weight: 700;
+    line-height: 1;
+    margin: 0.25rem 0;
+}
+
+.hm-stars {
+    display: flex;
+    gap: 2px;
+}
+
+.hm-star {
+    color: #f9c03b;
+    font-size: 16px;
+}
+
+.hm-art-img {
+    position: absolute;
+    right: 1rem;
+    top: -2rem;
+    z-index: 1;
+}
+
+.hm-art-img img {
+    width: 120px;
+    height: 120px;
+    object-fit: contain;
+    filter: drop-shadow(0 4px 6px rgba(0,0,0,0.3));
+}
+
+.hm-dropdowns {
+    display: flex;
+    gap: 1rem;
+    padding: 1rem 1.5rem;
+    background: #e9e5dc;
+}
+
+.hm-form-group {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+}
+
+.hm-form-group label {
+    font-size: 11px;
+    font-weight: 700;
+    color: #8c93a0;
+}
+
+.hm-form-group select {
+    background: #e1dbcf;
+    border: none;
+    padding: 0.5rem;
+    border-radius: 4px;
+    color: #495366;
+    font-weight: 600;
+    width: 100%;
+}
+
+.hm-substats {
+    padding: 0 1.5rem 1.5rem;
+    background: #e9e5dc;
+}
+
+.hm-substats-label {
+    font-size: 11px;
+    font-weight: 700;
+    color: #8c93a0;
+    margin-bottom: 0.75rem;
+}
+
+.hm-substats-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0.5rem;
+}
+
+.hm-checkbox {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+}
+
+.hm-checkbox.disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+.hm-stat-icon {
+    width: 16px;
+    height: 16px;
+    filter: invert(0.6);
+}
+
+.hm-footer {
+    background: #e9e5dc;
+    padding: 1rem 1.5rem;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border-top: 1px solid rgba(0,0,0,0.05);
+}
+
+.hm-btn-cancel {
+    background: transparent;
+    border: none;
+    color: #8c93a0;
+    font-weight: 600;
+    cursor: pointer;
+}
+
+.hm-btn-cancel:hover {
+    color: #495366;
+}
+
+.hm-btn-add {
+    background: #d5894b;
+    color: white;
+    border: none;
+    padding: 0.5rem 1.5rem;
+    border-radius: 20px;
+    font-weight: 700;
+    cursor: pointer;
+    box-shadow: 0 2px 4px rgba(213, 137, 75, 0.4);
+}
+
+.hm-btn-add:hover {
+    background: #c27a41;
+}

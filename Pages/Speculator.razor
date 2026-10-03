@@ -1,4 +1,4 @@
-﻿@page "/"
+@page "/"
 @inject ArtifactEngineService Engine
 
 <PageTitle>Artifact Speculation Engine</PageTitle>
@@ -69,21 +69,13 @@
             </div>
         </div>
 
-        <div class="card">
-            <div class="card-title">Target Piece</div>
-
-            <div class="form-group">
-                <label class="form-label" for="targetSlot">Artifact Slot</label>
-                <select id="targetSlot" class="form-select" @bind="_targetSlotStr">
-                    <option value="">Any</option>
-                    <option value="0">Flower</option>
-                    <option value="1">Plume</option>
-                    <option value="2">Sands</option>
-                    <option value="3">Goblet</option>
-                    <option value="4">Circlet</option>
+            <div class="form-group" style="margin-top: 1.5rem;">
+                <label class="form-label" style="font-size: 11px;">How should the simulator spend resin?</label>
+                <select class="form-select" @bind="_settings.Mode">
+                    <option value="@SimulationMode.TargetPiece">Target specific artifact</option>
+                    <option value="@SimulationMode.ResinBudget">Farm for Resin Budget</option>
                 </select>
             </div>
-        </div>
 
         <button class="btn-primary @(_loading ? "loading" : "")"
                 disabled="@(!CanRun)"
@@ -105,6 +97,28 @@
                 Reset
             </button>
         }
+    </div>
+
+    <!-- Hunt Panel -->
+    <div class="hunt-panel">
+        <div class="card" style="height: 100%;">
+            <div class="card-title">Hunt List</div>
+            <div style="font-size: 12px; color: #8c93a0; margin-top: -10px; margin-bottom: 12px;">Define the artifacts you want to hunt for</div>
+            
+            <button style="width: 100%; padding: 1.5rem; background: transparent; border: 1px dashed rgba(255,255,255,0.2); border-radius: 8px; color: #8c93a0; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 0.5rem; transition: background 0.2s;" @onclick="() => _showHuntModal = true" onmouseover="this.style.background='rgba(255,255,255,0.05)'" onmouseout="this.style.background='transparent'">
+                <div style="width: 20px; height: 20px; border-radius: 50%; background: #d5894b; color: white; display: flex; align-items: center; justify-content: center; font-weight: bold; font-size: 14px;">+</div> Add Artifact
+            </button>
+            
+            @if (_huntItem != null)
+            {
+                <div style="margin-top: 1rem; padding: 1rem; background: var(--card-inner); border-radius: 8px; border: 1px solid var(--line);">
+                    <div style="color: #d5894b; font-weight: 700; margin-bottom: 0.5rem;">@ArtifactData.GetSlotName(_huntItem.Slot ?? -1) Target</div>
+                    <div style="color: white; font-size: 13px; margin-bottom: 0.25rem;">Main: @(_huntItem.MainStat.HasValue ? ArtifactData.GetMainStatName(_huntItem.MainStat.Value) : "Any")</div>
+                    <div style="color: white; font-size: 13px;">Substats: @_huntItem.DesiredSubstats.Count</div>
+                    <button style="background: none; border: none; color: var(--bad); font-weight: 600; cursor: pointer; padding: 0; margin-top: 0.75rem;" @onclick="() => _huntItem = null">Remove</button>
+                </div>
+            }
+        </div>
     </div>
 
     <!-- Results Panel -->
@@ -160,7 +174,24 @@
                 </div>
             }
         }
-        else if (!_loading)
+        else if (_loading)
+        {
+            <div class="stat-grid animate-fade-in" style="opacity: 0.6;">
+                <div class="stat-card skeleton-card"><div class="stat-value"><span class="skeleton-block" style="width: 80px; height: 38px; border-radius: 6px;"></span></div><div class="stat-label">Resin Spent</div></div>
+                <div class="stat-card skeleton-card"><div class="stat-value"><span class="skeleton-block" style="width: 50px; height: 38px; border-radius: 6px;"></span></div><div class="stat-label">Days</div></div>
+                <div class="stat-card skeleton-card"><div class="stat-value"><span class="skeleton-block" style="width: 60px; height: 38px; border-radius: 6px;"></span></div><div class="stat-label">Domain Runs</div></div>
+                <div class="stat-card skeleton-card"><div class="stat-value"><span class="skeleton-block" style="width: 40px; height: 38px; border-radius: 6px;"></span></div><div class="stat-label">5-Star Found</div></div>
+            </div>
+            
+            <div class="card-title" style="margin-top: 1rem;">Simulating...</div>
+            <div class="artifact-grid">
+                @for (int i = 0; i < Math.Min(4, _settings.TopK); i++)
+                {
+                    <SkeletonArtifactCard />
+                }
+            </div>
+        }
+        else
         {
             <div class="empty-state">
                 <img src="icons/speculation.png" alt="" class="empty-state-icon" />
@@ -171,6 +202,11 @@
     </div>
 </div>
 
+@if (_showHuntModal)
+{
+    <HuntModal OnAdd="OnAddHuntItem" OnCancel="() => _showHuntModal = false" />
+}
+
 @code {
     private SimulationSettings _settings = new();
     private SimulationResult? _result;
@@ -179,11 +215,17 @@
     private bool _loading;
     private string? _runError;
     private double? _elapsedMs;
+    private bool _showHuntModal;
+    private HuntItem? _huntItem;
 
-    private string _targetSlotStr
+    private void OnAddHuntItem(HuntItem item)
     {
-        get => _settings.TargetSlot?.ToString() ?? "";
-        set => _settings.TargetSlot = string.IsNullOrEmpty(value) ? null : int.Parse(value);
+        _huntItem = item;
+        _showHuntModal = false;
+        
+        _settings.TargetSlot = item.Slot;
+        _settings.TargetMainStat = item.MainStat;
+        _settings.Priority = item.DesiredSubstats.ToArray();
     }
 
     private bool CanRun => _engineReady && !_loading && _settings.ResinBudget >= 20;
@@ -211,7 +253,11 @@
 
         _loading = true;
         _runError = null;
+        _result = null;
         StateHasChanged();
+        
+        // Yield to the UI thread so the skeleton loading screen can actually render
+        await Task.Delay(1);
 
         try
         {

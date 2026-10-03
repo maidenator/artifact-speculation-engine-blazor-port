@@ -1,6 +1,15 @@
-﻿using System.Text.Json.Serialization;
+using System.Text.Json.Serialization;
 
 namespace ArtifactSpeculationBlazor.Models;
+
+public class HuntItem
+{
+    public int? Slot { get; set; }
+    public int? MainStat { get; set; }
+    public List<int> DesiredSubstats { get; set; } = new();
+    public string Domain { get; set; } = "Any";
+    public string Set { get; set; } = "Any";
+}
 
 public class SubstatEntry
 {

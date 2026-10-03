@@ -1,0 +1,77 @@
+@using ArtifactSpeculationBlazor.Models
+
+<div class="hunt-modal-backdrop" @onclick="OnCancel">
+    <div class="hunt-modal" @onclick:stopPropagation>
+        <div class="hm-header">
+            <h3>Any Set</h3>
+            <button class="hm-close" @onclick="OnCancel">×</button>
+        </div>
+        
+        <div class="hm-body">
+            <div class="hm-slot-row">
+                <div class="hm-slot-icons">
+                    @for (int i = 0; i < 5; i++)
+                    {
+                        int slot = i;
+                        <button class="hm-slot-btn @(_selectedSlot == slot ? "active" : "")" @onclick="() => SelectSlot(slot)">
+                            <img src="@ArtifactData.GetSlotIcon(slot)" alt="@ArtifactData.GetSlotName(slot)" />
+                        </button>
+                    }
+                </div>
+                <div class="hm-slot-name">@ArtifactData.GetSlotName(_selectedSlot)</div>
+            </div>
+
+            <div class="hm-main-display">
+                <div class="hm-main-info">
+                    <div class="hm-main-label">@(_selectedMainStat.HasValue ? ArtifactData.GetMainStatName(_selectedMainStat.Value) : "Any")</div>
+                    <div class="hm-main-val">4,780</div>
+                    <div class="hm-stars">
+                        @for (int i = 0; i < 5; i++)
+                        {
+                            <span class="hm-star">★</span>
+                        }
+                    </div>
+                </div>
+                <div class="hm-art-img">
+                    <img src="icons/artifactset/GladiatorFlower.png" />
+                </div>
+            </div>
+
+            <div class="hm-dropdowns">
+                <div class="hm-form-group">
+                    <label>DOMAIN</label>
+                    <select @bind="_domain">
+                        <option value="Any">Any</option>
+                    </select>
+                </div>
+                <div class="hm-form-group">
+                    <label>SET</label>
+                    <select @bind="_set">
+                        <option value="Any">Any</option>
+                    </select>
+                </div>
+            </div>
+
+            <div class="hm-substats">
+                <div class="hm-substats-label">DESIRED SUBSTATS (@_selectedSubstats.Count/4)</div>
+                <div class="hm-substats-grid">
+                    @foreach (var stat in new[] { Stat.CritDMG, Stat.CritRate, Stat.ElementalMastery, Stat.EnergyRecharge, Stat.AtkPercent, Stat.FlatAtk, Stat.HpPercent, Stat.FlatHp, Stat.DefPercent, Stat.FlatDef })
+                    {
+                        bool isSelected = _selectedSubstats.Contains(stat);
+                        bool disabled = _selectedSubstats.Count >= 4 && !isSelected;
+                        <label class="hm-checkbox @(disabled ? "disabled" : "")">
+                            <input type="checkbox" checked="@isSelected" disabled="@disabled" @onchange="() => ToggleSubstat(stat)" />
+                            <img src="@ArtifactData.GetStatIcon(ArtifactData.GetSubStatName(stat))" class="hm-stat-icon" />
+                            <span>@ArtifactData.GetSubStatName(stat)</span>
+                        </label>
+                    }
+                </div>
+            </div>
+        </div>
+
+        <div class="hm-footer">
+            <button class="hm-btn-cancel" @onclick="OnCancel">Cancel</button>
+            <button class="hm-btn-add" @onclick="AddToHuntList">Add to Hunt List</button>
+        </div>
+    </div>
+</div>
