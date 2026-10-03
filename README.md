@@ -1,9 +1,9 @@
-﻿## Artifact Speculation Engine — Blazor
+## Artifact Speculation Engine — Blazor
 
 **A Blazor WebAssembly port of the Artifact Speculation Engine.**
 
 The original React/TypeScript version of this project can be found at:
-`../artifact-speculation-engine`
+[Artifact-Speculation-Engine](https://github.com/maidenator/Artifact-Speculation-Engine)
 
 ---
 

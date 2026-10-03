@@ -1,7 +1,12 @@
-﻿/* Artifact Speculation Engine — Blazor CSS */
+/* Artifact Speculation Engine — Blazor CSS */
 
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
 
+@font-face {
+    font-family: 'zh-cn';
+    src: url('../fonts/zh-cn.ttf') format('truetype');
+    font-display: swap;
+}
 :root {
     --page: #121620;
     --card: #1c2232;
@@ -27,7 +32,7 @@ html, body {
     margin: 0;
     background: var(--page);
     color: var(--ink);
-    font-family: 'Inter', system-ui, -apple-system, sans-serif;
+    font-family: 'zh-cn', 'Inter', system-ui, -apple-system, sans-serif;
     min-height: 100vh;
     -webkit-font-smoothing: antialiased;
 }
