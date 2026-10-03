@@ -1,0 +1,105 @@
+﻿@inject ArtifactEngineService Engine
+
+<div class="artifact-card animate-fade-in">
+    <div class="artifact-header">
+        <span class="artifact-slot">
+            <img src="@GetSlotIcon(Artifact.Slot)" alt="@GetSlotName(Artifact.Slot)" class="slot-icon" />
+            @GetSlotName(Artifact.Slot)
+        </span>
+        <span class="artifact-cv">@Artifact.CritValue.ToString("F1") CV</span>
+    </div>
+
+    <div class="artifact-main">
+        <img src="@GetStatIcon(Artifact.MainStat.Type)" alt="" class="stat-icon" />
+        @GetMainStatName(Artifact.MainStat.Type): @FormatValue(Artifact.MainStat.Type, Artifact.MainStat.Value)
+    </div>
+
+    @foreach (var sub in Artifact.SubStats)
+    {
+        <div class="substat-row">
+            <span class="substat-name">
+                <img src="@GetStatIcon(sub.Type)" alt="" class="stat-icon-sm" />
+                @GetSubStatName(sub.Type)
+            </span>
+            <span style="display: flex; align-items: center;">
+                <span class="substat-value">@FormatValue(sub.Type, sub.Value)</span>
+                <span class="substat-dots">
+                    @for (int i = 0; i < sub.Rolls; i++)
+                    {
+                        <span class="substat-dot active"></span>
+                    }
+                </span>
+            </span>
+        </div>
+    }
+</div>
+
+@code {
+    [Parameter, EditorRequired]
+    public ArtifactOutput Artifact { get; set; } = default!;
+
+    private static string GetSlotName(int slot) => slot switch
+    {
+        0 => "Flower",
+        1 => "Plume",
+        2 => "Sands",
+        3 => "Goblet",
+        4 => "Circlet",
+        _ => "Unknown"
+    };
+
+    private static string GetSlotIcon(int slot) => slot switch
+    {
+        0 => "icons/slot/flower.png",
+        1 => "icons/slot/feather.png",
+        2 => "icons/slot/sands.png",
+        3 => "icons/slot/goblet.png",
+        4 => "icons/slot/circlet.png",
+        _ => "icons/slot/flower.png"
+    };
+
+    private static string GetStatIcon(int type) => type switch
+    {
+        0 => "icons/stat/hp.png",
+        1 => "icons/stat/attack.png",
+        2 => "icons/stat/defense.png",
+        3 => "icons/stat/hp_percent.png",
+        4 => "icons/stat/attack_percent.png",
+        5 => "icons/stat/defense_percent.png",
+        6 => "icons/stat/energy_recharge.png",
+        7 => "icons/stat/elemental_mastery.png",
+        8 => "icons/stat/crit_rate.png",
+        9 => "icons/stat/crit_damage.png",
+        10 => "icons/stat/healing_bonus.png",
+        _ => "icons/stat/attack.png"
+    };
+
+    private static readonly Dictionary<int, string> MainStatNames = new()
+    {
+        [0] = "HP", [1] = "ATK", [2] = "DEF", [3] = "HP%", [4] = "ATK%",
+        [5] = "DEF%", [6] = "Energy Recharge", [7] = "Elemental Mastery",
+        [8] = "Crit Rate", [9] = "Crit DMG", [10] = "Healing Bonus",
+        [11] = "Pyro DMG", [12] = "Electro DMG", [13] = "Cryo DMG",
+        [14] = "Hydro DMG", [15] = "Anemo DMG", [16] = "Geo DMG",
+        [17] = "Dendro DMG", [18] = "Physical DMG"
+    };
+
+    private static readonly Dictionary<int, string> SubStatNames = new()
+    {
+        [0] = "HP", [1] = "ATK", [2] = "DEF", [3] = "HP%", [4] = "ATK%",
+        [5] = "DEF%", [6] = "Energy Recharge", [7] = "Elemental Mastery",
+        [8] = "Crit Rate", [9] = "Crit DMG"
+    };
+
+    // Percentage-based stats
+    private static readonly HashSet<int> PercentStats = [3, 4, 5, 6, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18];
+
+    private static string GetMainStatName(int type) =>
+        MainStatNames.GetValueOrDefault(type, $"Stat {type}");
+
+    private static string GetSubStatName(int type) =>
+        SubStatNames.GetValueOrDefault(type, $"Stat {type}");
+
+    private static string FormatValue(int type, double value) =>
+        PercentStats.Contains(type) ? $"{value:F1}%" : $"{value:F0}";
+}

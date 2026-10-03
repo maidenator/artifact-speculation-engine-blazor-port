@@ -1,0 +1,240 @@
+﻿@page "/"
+@inject ArtifactEngineService Engine
+
+<PageTitle>Artifact Speculation Engine</PageTitle>
+
+<div class="app-header">
+    <h1>Artifact Speculation Engine</h1>
+    <p class="subtitle">Monte Carlo artifact simulator powered by C++ WebAssembly</p>
+
+    @if (!_engineReady && _engineError == null)
+    {
+        <div class="engine-status loading">
+            <span class="status-dot"></span>
+            Initializing engine...
+        </div>
+    }
+    else if (_engineError != null)
+    {
+        <div class="engine-status error">
+            <span class="status-dot"></span>
+            @_engineError
+        </div>
+    }
+    else
+    {
+        <div class="engine-status">
+            <span class="status-dot"></span>
+            Engine ready
+        </div>
+    }
+</div>
+
+<div class="content-grid">
+    <!-- Config Panel -->
+    <div class="config-panel">
+        <div class="card">
+            <div class="card-title">
+                <img src="icons/resin.png" alt="" class="card-title-icon" />
+                Resin Budget
+            </div>
+
+            <div class="form-group">
+                <label class="form-label" for="resinBudget">Total Resin</label>
+                <input id="resinBudget" type="number" class="form-input"
+                       @bind="_settings.ResinBudget" min="20" step="20" />
+            </div>
+
+            <div class="form-group">
+                <label class="form-label" for="topK">Top Results</label>
+                <input id="topK" type="number" class="form-input"
+                       @bind="_settings.TopK" min="1" max="100" />
+            </div>
+
+            <div class="toggle-row">
+                <span class="form-label" style="margin-bottom: 0;">
+                    <img src="icons/strongbox.webp" alt="" class="inline-icon" />
+                    Use Strongbox
+                </span>
+                <label class="toggle-switch">
+                    <input type="checkbox" @bind="_settings.UseStrongBox" />
+                    <span class="toggle-track"></span>
+                </label>
+            </div>
+
+            <div class="form-group">
+                <label class="form-label" for="minCV">Min Crit Value</label>
+                <input id="minCV" type="number" class="form-input"
+                       @bind="_settings.MinCritValue" min="0" step="5" />
+            </div>
+        </div>
+
+        <div class="card">
+            <div class="card-title">Target Piece</div>
+
+            <div class="form-group">
+                <label class="form-label" for="targetSlot">Artifact Slot</label>
+                <select id="targetSlot" class="form-select" @bind="_targetSlotStr">
+                    <option value="">Any</option>
+                    <option value="0">Flower</option>
+                    <option value="1">Plume</option>
+                    <option value="2">Sands</option>
+                    <option value="3">Goblet</option>
+                    <option value="4">Circlet</option>
+                </select>
+            </div>
+        </div>
+
+        <button class="btn-primary @(_loading ? "loading" : "")"
+                disabled="@(!CanRun)"
+                @onclick="RunSimulation">
+            @if (_loading)
+            {
+                <span class="btn-content"><span class="spinner"></span> Simulating...</span>
+            }
+            else
+            {
+                <span>Run Simulation</span>
+            }
+        </button>
+
+        @if (_result != null)
+        {
+            <button class="btn-secondary" style="margin-top: 0.75rem; width: 100%;"
+                    @onclick="Reset">
+                Reset
+            </button>
+        }
+    </div>
+
+    <!-- Results Panel -->
+    <div class="results-panel">
+        @if (_runError != null)
+        {
+            <div class="error-banner">@_runError</div>
+        }
+
+        @if (_result != null)
+        {
+            <div class="stat-grid animate-fade-in">
+                <div class="stat-card">
+                    <div class="stat-value">@_result.TotalResinSpent.ToString("N0")</div>
+                    <div class="stat-label">Resin Spent</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-value">@_result.EquivalentDays.ToString("F1")</div>
+                    <div class="stat-label">Days</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-value">@_result.DomainRunsCompleted.ToString("N0")</div>
+                    <div class="stat-label">Domain Runs</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-value">@_result.TotalFiveStarsFound.ToString("N0")</div>
+                    <div class="stat-label">5-Star Found</div>
+                </div>
+                @if (_result.StrongboxRollsCompleted > 0)
+                {
+                    <div class="stat-card">
+                        <div class="stat-value">@_result.StrongboxRollsCompleted.ToString("N0")</div>
+                        <div class="stat-label">Strongbox Rolls</div>
+                    </div>
+                }
+                @if (_elapsedMs.HasValue)
+                {
+                    <div class="stat-card">
+                        <div class="stat-value">@(_elapsedMs.Value.ToString("F0"))ms</div>
+                        <div class="stat-label">Elapsed</div>
+                    </div>
+                }
+            </div>
+
+            @if (_result.TopArtifacts.Count > 0)
+            {
+                <div class="card-title">Top Artifacts</div>
+                <div class="artifact-grid">
+                    @foreach (var art in _result.TopArtifacts)
+                    {
+                        <ArtifactCard Artifact="art" />
+                    }
+                </div>
+            }
+        }
+        else if (!_loading)
+        {
+            <div class="empty-state">
+                <img src="icons/speculation.png" alt="" class="empty-state-icon" />
+                <h3>No Results Yet</h3>
+                <p>Configure your resin budget and run a simulation to see what artifacts you might find.</p>
+            </div>
+        }
+    </div>
+</div>
+
+@code {
+    private SimulationSettings _settings = new();
+    private SimulationResult? _result;
+    private bool _engineReady;
+    private string? _engineError;
+    private bool _loading;
+    private string? _runError;
+    private double? _elapsedMs;
+
+    private string _targetSlotStr
+    {
+        get => _settings.TargetSlot?.ToString() ?? "";
+        set => _settings.TargetSlot = string.IsNullOrEmpty(value) ? null : int.Parse(value);
+    }
+
+    private bool CanRun => _engineReady && !_loading && _settings.ResinBudget >= 20;
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            try
+            {
+                await Engine.InitAsync(DateTimeOffset.UtcNow.ToUnixTimeMilliseconds());
+                _engineReady = true;
+            }
+            catch (Exception ex)
+            {
+                _engineError = $"Failed to initialize engine: {ex.Message}";
+            }
+            StateHasChanged();
+        }
+    }
+
+    private async Task RunSimulation()
+    {
+        if (!CanRun) return;
+
+        _loading = true;
+        _runError = null;
+        StateHasChanged();
+
+        try
+        {
+            var sw = System.Diagnostics.Stopwatch.StartNew();
+            _result = await Engine.RunSimulationAsync(_settings);
+            sw.Stop();
+            _elapsedMs = sw.Elapsed.TotalMilliseconds;
+        }
+        catch (Exception ex)
+        {
+            _runError = $"Simulation error: {ex.Message}";
+        }
+        finally
+        {
+            _loading = false;
+        }
+    }
+
+    private void Reset()
+    {
+        _settings = new SimulationSettings();
+        _result = null;
+        _elapsedMs = null;
+        _runError = null;
+    }
+}
