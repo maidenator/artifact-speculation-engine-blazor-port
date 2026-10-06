@@ -63,18 +63,54 @@ public class ArtifactEngineService : IAsyncDisposable
     }
 
     /// <summary>
-    /// Run a full simulation with the given settings.
+    /// Run a single full-budget sample (ResinBudget mode). One draw only —
+    /// the UI labels it as such; use Target trials for distributions.
     /// </summary>
-    public async Task<SimulationResult> RunSimulationAsync(SimulationSettings settings)
+    public Task<SimulationResult> RunSimulationAsync(SimulationSettings settings)
     {
         var configJson = BuildSimulationConfig(settings);
-        await SetSeedAsync(DateTimeOffset.UtcNow.ToUnixTimeMilliseconds());
+        return RunOneAsync(configJson, settings, DateTimeOffset.UtcNow.ToUnixTimeMilliseconds());
+    }
 
+    /// <summary>
+    /// Run N independent full-budget Target trials (review §1 HIGH) and
+    /// aggregate resin-to-goal into a success rate plus p50/p90 percentiles.
+    /// Each trial gets a distinct seed; cancellation is checked between trials.
+    /// </summary>
+    public async Task<TargetTrialResult> RunTargetTrialsAsync(
+        SimulationSettings settings, int trialCount, CancellationToken ct = default)
+    {
+        var configJson = BuildSimulationConfig(settings);
+        long seedBase = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
+        var sw = System.Diagnostics.Stopwatch.StartNew();
+
+        var trials = new List<(double? Resin, SimulationResult Result)>(trialCount);
+        for (int i = 0; i < trialCount; i++)
+        {
+            ct.ThrowIfCancellationRequested();
+            var result = await RunOneAsync(configJson, settings, seedBase + i);
+            trials.Add((result.TargetAchieved ? (double?)result.TotalResinSpent : null, result));
+        }
+        sw.Stop();
+
+        var distribution = TargetStats.Aggregate(trials.Select(t => t.Resin).ToList());
+
+        SimulationResult? median = null;
+        if (distribution.Successes > 0)
+        {
+            var wins = trials.Where(t => t.Resin.HasValue).OrderBy(t => t.Resin!.Value).ToList();
+            median = wins[Math.Min(wins.Count - 1, wins.Count / 2)].Result;
+        }
+
+        return new TargetTrialResult { Distribution = distribution, MedianResult = median, ElapsedMs = sw.Elapsed.TotalMilliseconds };
+    }
+
+    private async Task<SimulationResult> RunOneAsync(string configJson, SimulationSettings settings, long seed)
+    {
+        await SetSeedAsync(seed);
         var resultJson = await _js.InvokeAsync<string>("artifactEngine.runSimulation", configJson);
         var result = JsonSerializer.Deserialize<SimulationResult>(resultJson, JsonOptions) ?? new();
 
-        // Client-side re-sort parity with the React frontend: the C++ engine
-        // already ranks by these weights, but re-sorting guards against drift.
         var weights = ScoringService.WeightsFromPriority(settings.Priority ?? []);
         ScoringService.SortByScore(result.TopArtifacts, weights);
         if (result.TopArtifacts.Count > settings.TopK)

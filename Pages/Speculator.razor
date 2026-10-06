@@ -57,7 +57,7 @@
             <div class="form-group">
                 <label class="form-label" for="topK">Top Results</label>
                 <input id="topK" type="number" class="form-input"
-                       @bind="_settings.TopK" min="1" max="100" />
+                       @bind="_settings.TopK" min="1" max="20" />
             </div>
 
             <div class="toggle-row">
@@ -109,6 +109,12 @@
                         }
                     </select>
                 </div>
+
+                <div class="form-group" style="margin-top: 1rem;">
+                    <label class="form-label" style="font-size: 11px;" for="trials">Trials (independent runs)</label>
+                    <input id="trials" type="number" class="form-input"
+                           @bind="_settings.TrialCount" min="1" max="100" />
+                </div>
             }
 
             <SubstatPriority Priority="_settings.Priority" PriorityChanged="OnPriorityChanged" />
@@ -126,18 +132,18 @@
             }
         </button>
 
-        @if (_result != null || _huntResult != null)
+        @if (_result != null || _targetResult != null || _huntResult != null)
         {
             <button class="btn-secondary" style="margin-top: 0.75rem; width: 100%;"
                     @onclick="Reset">
                 Reset
             </button>
         }
-        @if (_loading && HuntList.Items.Count > 0)
+        @if (_loading)
         {
             <button class="btn-secondary" style="margin-top: 0.75rem; width: 100%;"
                     @onclick="CancelRun">
-                Cancel Hunt
+                Cancel Run
             </button>
         }
     </div>
@@ -220,8 +226,46 @@
             <p style="font-size: 12px; color: #8c93a0;">Hunt examines every drop at exact run cost (20 resin/run, 6.5% double drops). Strongbox not modeled in hunts.</p>
             <button class="btn-secondary" style="margin-top: 0.75rem;" @onclick="ExportHuntGood">Export found to GOOD</button>
         }
+        else if (_targetResult != null)
+        {
+            var dist = _targetResult.Distribution;
+            <div class="stat-grid animate-fade-in">
+                <div class="stat-card">
+                    <div class="stat-value">@(dist.SuccessRate.ToString("P0"))</div>
+                    <div class="stat-label">Success in @dist.Attempts trials</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-value">@(dist.P50Resin.HasValue ? dist.P50Resin.Value.ToString("N0") : "—")</div>
+                    <div class="stat-label">Median resin (p50)</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-value">@(dist.P90Resin.HasValue ? dist.P90Resin.Value.ToString("N0") : "—")</div>
+                    <div class="stat-label">Unlucky resin (p90)</div>
+                </div>
+                @if (_elapsedMs.HasValue)
+                {
+                    <div class="stat-card">
+                        <div class="stat-value">@(_elapsedMs.Value.ToString("F0"))ms</div>
+                        <div class="stat-label">Elapsed</div>
+                    </div>
+                }
+            </div>
+
+            @if (_targetResult.MedianResult?.TopArtifacts.Count > 0)
+            {
+                <div class="card-title">Median trial artifacts</div>
+                <div class="artifact-grid">
+                    @foreach (var art in _targetResult.MedianResult!.TopArtifacts)
+                    {
+                        <ArtifactCard Artifact="art" />
+                    }
+                </div>
+                <button class="btn-secondary" style="margin-top: 0.75rem;" @onclick="ExportTargetGood">Export to GOOD</button>
+            }
+        }
         else if (_result != null)
         {
+            <p style="font-size: 12px; color: #8c93a0;">Single full-budget sample — one random draw, not a typical outcome.</p>
             <div class="stat-grid animate-fade-in">
                 <div class="stat-card">
                     <div class="stat-value">@_result.TotalResinSpent.ToString("N0")</div>
@@ -303,8 +347,9 @@
 @code {
     private SimulationSettings _settings = new();
     private SimulationResult? _result;
+    private TargetTrialResult? _targetResult;
     private HuntListResult? _huntResult;
-    private CancellationTokenSource? _huntCts;
+    private CancellationTokenSource? _runCts;
     private bool _engineReady;
     private string? _engineError;
     private bool _loading;
@@ -434,6 +479,7 @@
         _loading = true;
         _runError = null;
         _result = null;
+        _targetResult = null;
         _huntResult = null;
         StateHasChanged();
 
@@ -444,12 +490,20 @@
         {
             if (HuntList.Items.Count > 0)
             {
-                _huntCts?.Dispose();
-                _huntCts = new CancellationTokenSource();
+                _runCts?.Dispose();
+                _runCts = new CancellationTokenSource();
                 var runner = new HuntRunner(count => Engine.GenerateBatchAsync(count, upgrade: true));
-                var huntResult = await runner.RunHuntAsync(HuntList.Items, _settings.ResinBudget, _huntCts.Token);
+                var huntResult = await runner.RunHuntAsync(HuntList.Items, _settings.ResinBudget, _runCts.Token);
                 _huntResult = huntResult;
                 _elapsedMs = huntResult.ElapsedMs;
+            }
+            else if (_settings.Mode == SimulationMode.TargetPiece)
+            {
+                _runCts?.Dispose();
+                _runCts = new CancellationTokenSource();
+                var trials = await Engine.RunTargetTrialsAsync(_settings, _settings.TrialCount, _runCts.Token);
+                _targetResult = trials;
+                _elapsedMs = trials.ElapsedMs;
             }
             else
             {
@@ -461,7 +515,7 @@
         }
         catch (OperationCanceledException)
         {
-            _runError = "Hunt cancelled.";
+            _runError = "Run cancelled.";
         }
         catch (Exception ex)
         {
@@ -475,7 +529,7 @@
 
     private void CancelRun()
     {
-        _huntCts?.Cancel();
+        _runCts?.Cancel();
     }
 
     private async Task ExportGoodAsync(IEnumerable<ArtifactOutput> artifacts, string filename)
@@ -488,6 +542,9 @@
     private Task ExportResultGood() =>
         ExportGoodAsync(_result?.TopArtifacts ?? [], "artifacts-good.json");
 
+    private Task ExportTargetGood() =>
+        ExportGoodAsync(_targetResult?.MedianResult?.TopArtifacts ?? [], "target-good.json");
+
     private Task ExportHuntGood() =>
         ExportGoodAsync(
             (_huntResult?.ItemResults ?? [])
@@ -499,6 +556,7 @@
     {
         _settings = new SimulationSettings();
         _result = null;
+        _targetResult = null;
         _huntResult = null;
         _elapsedMs = null;
         _runError = null;

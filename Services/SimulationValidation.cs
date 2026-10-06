@@ -14,7 +14,10 @@ public static class SimulationValidation
     public const int MaxResin = 10_000_000;
     public const int ResinStep = 20;
     public const int MinTopK = 1;
-    public const int MaxTopK = 100;
+    // The C++ reservoir keeps at most 20; asking for more silently truncates.
+    public const int MaxTopK = 20;
+    public const int MinTrials = 1;
+    public const int MaxTrials = 100;
 
     public static int ClampResinBudget(int resin)
     {
@@ -24,12 +27,15 @@ public static class SimulationValidation
 
     public static int ClampTopK(int topK) => Math.Clamp(topK, MinTopK, MaxTopK);
 
+    public static int ClampTrialCount(int trials) => Math.Clamp(trials, MinTrials, MaxTrials);
+
     public static double ClampMinCritValue(double cv) => Math.Max(0, cv);
 
     public static void Normalize(SimulationSettings settings)
     {
         settings.ResinBudget = ClampResinBudget(settings.ResinBudget);
         settings.TopK = ClampTopK(settings.TopK);
+        settings.TrialCount = ClampTrialCount(settings.TrialCount);
         settings.MinCritValue = ClampMinCritValue(settings.MinCritValue);
         settings.Priority ??= [];
         // An impossible slot+main pair can never match — drop the main stat.

@@ -178,6 +178,22 @@ public class SimulationSettings
     /// Default matches React: priorityFrom(WEIGHT_PRESETS[0]) = Crit DMG + Crit Rate.
     /// </summary>
     public int[] Priority { get; set; } = [Stat.CritDMG, Stat.CritRate];
+
+    /// <summary>
+    /// Independent full-budget trials per run (Target mode distribution).
+    /// </summary>
+    public int TrialCount { get; set; } = 20;
+}
+
+/// <summary>
+/// Outcome of a multi-trial Target run: the aggregate distribution plus the
+/// median successful trial (for artifact display / GOOD export).
+/// </summary>
+public class TargetTrialResult
+{
+    public Services.TargetStats.TargetDistribution Distribution { get; set; } = new(0, 0, 0, null, null);
+    public SimulationResult? MedianResult { get; set; }
+    public double ElapsedMs { get; set; }
 }
 
 public class SubstatWeight
