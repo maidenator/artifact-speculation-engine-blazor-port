@@ -51,12 +51,16 @@ public partial class HuntModal : ComponentBase
     {
         var item = new HuntItem
         {
+            Id = Guid.NewGuid().ToString(),
             Slot = _selectedSlot,
-            MainStat = _selectedMainStat,
-            DesiredSubstats = _selectedSubstats.ToList(),
-            Domain = _domain,
-            Set = _set
+            MainStat = _selectedMainStat ?? Stat.FlatHp,
+            Substats = DesiredSubstatsToSubstats(),
+            DomainId = _domain == "Any" ? null : _domain,
+            SetId = _set == "Any" ? null : _set,
         };
         await OnAdd.InvokeAsync(item);
     }
+
+    private List<HuntSubstat> DesiredSubstatsToSubstats() =>
+        _selectedSubstats.Select(stat => new HuntSubstat { Stat = stat, MinRolls = 1 }).ToList();
 }

@@ -1,5 +1,9 @@
 @page "/"
+@using ArtifactSpeculationBlazor.Services
 @inject ArtifactEngineService Engine
+@inject HuntListService HuntList
+@inject IJSRuntime JS
+@implements IDisposable
 
 <PageTitle>Artifact Speculation Engine</PageTitle>
 
@@ -105,18 +109,26 @@
             <div class="card-title">Hunt List</div>
             <div style="font-size: 12px; color: #8c93a0; margin-top: -10px; margin-bottom: 12px;">Define the artifacts you want to hunt for</div>
             
-            <button style="width: 100%; padding: 1.5rem; background: transparent; border: 1px dashed rgba(255,255,255,0.2); border-radius: 8px; color: #8c93a0; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 0.5rem; transition: background 0.2s;" @onclick="() => _showHuntModal = true" onmouseover="this.style.background='rgba(255,255,255,0.05)'" onmouseout="this.style.background='transparent'">
-                <div style="width: 20px; height: 20px; border-radius: 50%; background: #d5894b; color: white; display: flex; align-items: center; justify-content: center; font-weight: bold; font-size: 14px;">+</div> Add Artifact
-            </button>
-            
-            @if (_huntItem != null)
+            @if (HuntList.Items.Count == 0)
             {
-                <div style="margin-top: 1rem; padding: 1rem; background: var(--card-inner); border-radius: 8px; border: 1px solid var(--line);">
-                    <div style="color: #d5894b; font-weight: 700; margin-bottom: 0.5rem;">@ArtifactData.GetSlotName(_huntItem.Slot ?? -1) Target</div>
-                    <div style="color: white; font-size: 13px; margin-bottom: 0.25rem;">Main: @(_huntItem.MainStat.HasValue ? ArtifactData.GetMainStatName(_huntItem.MainStat.Value) : "Any")</div>
-                    <div style="color: white; font-size: 13px;">Substats: @_huntItem.DesiredSubstats.Count</div>
-                    <button style="background: none; border: none; color: var(--bad); font-weight: 600; cursor: pointer; padding: 0; margin-top: 0.75rem;" @onclick="() => _huntItem = null">Remove</button>
-                </div>
+                <button style="width: 100%; padding: 1.5rem; background: transparent; border: 1px dashed rgba(255,255,255,0.2); border-radius: 8px; color: #8c93a0; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 0.5rem; transition: background 0.2s;" @onclick="() => _showHuntModal = true" onmouseover="this.style.background='rgba(255,255,255,0.05)'" onmouseout="this.style.background='transparent'">
+                    <div style="width: 20px; height: 20px; border-radius: 50%; background: #d5894b; color: white; display: flex; align-items: center; justify-content: center; font-weight: bold; font-size: 14px;">+</div> Add Artifact
+                </button>
+            }
+            else
+            {
+                <button style="width: 100%; padding: 0.75rem; background: transparent; border: 1px dashed rgba(255,255,255,0.2); border-radius: 8px; color: #8c93a0; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 0.5rem;" @onclick="() => _showHuntModal = true">
+                    <div style="width: 20px; height: 20px; border-radius: 50%; background: #d5894b; color: white; display: flex; align-items: center; justify-content: center; font-weight: bold; font-size: 14px;">+</div> Add Artifact
+                </button>
+                @foreach (var hunt in HuntList.Items)
+                {
+                    <div style="margin-top: 1rem; padding: 1rem; background: var(--card-inner); border-radius: 8px; border: 1px solid var(--line);">
+                        <div style="color: #d5894b; font-weight: 700; margin-bottom: 0.5rem;">@ArtifactData.GetSlotName(hunt.Slot) Target</div>
+                        <div style="color: white; font-size: 13px; margin-bottom: 0.25rem;">Main: @ArtifactData.GetMainStatName(hunt.MainStat)</div>
+                        <div style="color: white; font-size: 13px;">Substats: @hunt.Substats.Count</div>
+                        <button style="background: none; border: none; color: var(--bad); font-weight: 600; cursor: pointer; padding: 0; margin-top: 0.75rem;" @onclick="() => RemoveHuntItem(hunt.Id)">Remove</button>
+                    </div>
+                }
             }
         </div>
     </div>
@@ -216,16 +228,66 @@
     private string? _runError;
     private double? _elapsedMs;
     private bool _showHuntModal;
-    private HuntItem? _huntItem;
+
+    protected override async Task OnInitializedAsync()
+    {
+        HuntList.OnChange += PersistAndRefresh;
+        await LoadHuntListAsync();
+    }
+
+    private async Task LoadHuntListAsync()
+    {
+        try
+        {
+            var json = await JS.InvokeAsync<string>("localStorage.getItem", HuntListService.StorageKey);
+            HuntList.LoadFromJson(json);
+        }
+        catch
+        {
+            // localStorage unavailable (prerendering/tests) — start empty.
+        }
+    }
+
+    private void PersistAndRefresh()
+    {
+        _ = PersistHuntListAsync();
+        StateHasChanged();
+    }
+
+    private async Task PersistHuntListAsync()
+    {
+        try
+        {
+            await JS.InvokeVoidAsync("localStorage.setItem", HuntListService.StorageKey, HuntList.ToJson());
+        }
+        catch
+        {
+            // Ignore persistence failures.
+        }
+    }
 
     private void OnAddHuntItem(HuntItem item)
     {
-        _huntItem = item;
         _showHuntModal = false;
-        
-        _settings.TargetSlot = item.Slot;
-        _settings.TargetMainStat = item.MainStat;
-        _settings.Priority = item.DesiredSubstats.ToArray();
+        if (!HuntList.Add(item))
+            return;
+
+        // Slice-2 compatibility: mirror the first hunt item into target settings
+        // so standard runs aim at it until the real hunt loop lands (slice 4).
+        var first = HuntList.Items[0];
+        _settings.TargetSlot = first.Slot;
+        _settings.TargetMainStat = first.MainStat;
+        _settings.Priority = first.Substats.Select(s => s.Stat).ToArray();
+    }
+
+    private void RemoveHuntItem(string id)
+    {
+        HuntList.Remove(id);
+    }
+
+    public void Dispose()
+    {
+        HuntList.OnChange -= PersistAndRefresh;
     }
 
     private bool CanRun => _engineReady && !_loading && _settings.ResinBudget >= 20;

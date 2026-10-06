@@ -4,11 +4,39 @@ namespace ArtifactSpeculationBlazor.Models;
 
 public class HuntItem
 {
-    public int? Slot { get; set; }
-    public int? MainStat { get; set; }
-    public List<int> DesiredSubstats { get; set; } = new();
-    public string Domain { get; set; } = "Any";
-    public string Set { get; set; } = "Any";
+    public string Id { get; set; } = Guid.NewGuid().ToString();
+    public int Slot { get; set; }
+    public int MainStat { get; set; }
+    public List<HuntSubstat> Substats { get; set; } = [];
+    public string? DomainId { get; set; }
+    public string? SetId { get; set; }
+}
+
+public class HuntSubstat
+{
+    public int Stat { get; set; }
+    public int MinRolls { get; set; } = 1;
+}
+
+public class HuntItemResult
+{
+    public string HuntItemId { get; set; } = "";
+    public bool Found { get; set; }
+    public int ResinSpent { get; set; }
+    public double DaysSpent { get; set; }
+    public ArtifactOutput? Artifact { get; set; }
+}
+
+public class HuntListResult
+{
+    public bool AllFound { get; set; }
+    public int TotalResinSpent { get; set; }
+    public double TotalDays { get; set; }
+    public int CondensedResin { get; set; }
+    public int DomainRunsCompleted { get; set; }
+    public int StrongboxRollsCompleted { get; set; }
+    public List<HuntItemResult> ItemResults { get; set; } = [];
+    public double ElapsedMs { get; set; }
 }
 
 public class SubstatEntry
