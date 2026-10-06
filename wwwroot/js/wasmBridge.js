@@ -79,5 +79,20 @@ window.artifactEngine = {
             engine.delete();
             engine = null;
         }
+    },
+
+    /**
+     * Download a text file (used for GOOD export).
+     */
+    downloadFile: function (filename, content, mime) {
+        const blob = new Blob([content], { type: mime || 'application/json' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = filename;
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+        setTimeout(() => URL.revokeObjectURL(url), 1000);
     }
 };

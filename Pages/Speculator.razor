@@ -183,6 +183,7 @@
                 }
             }
             <p style="font-size: 12px; color: #8c93a0;">Hunt examines every drop at exact run cost (20 resin/run, 6.5% double drops). Strongbox not modeled in hunts.</p>
+            <button class="btn-secondary" style="margin-top: 0.75rem;" @onclick="ExportHuntGood">Export found to GOOD</button>
         }
         else if (_result != null)
         {
@@ -228,6 +229,7 @@
                         <ArtifactCard Artifact="art" />
                     }
                 </div>
+                <button class="btn-secondary" style="margin-top: 0.75rem;" @onclick="ExportResultGood">Export to GOOD</button>
             }
         }
         else if (_loading)
@@ -398,6 +400,23 @@
     {
         _huntCts?.Cancel();
     }
+
+    private async Task ExportGoodAsync(IEnumerable<ArtifactOutput> artifacts, string filename)
+    {
+        var doc = GoodExportService.ToGoodDocument(artifacts);
+        var json = System.Text.Json.JsonSerializer.Serialize(doc);
+        await JS.InvokeVoidAsync("artifactEngine.downloadFile", filename, json, "application/json");
+    }
+
+    private Task ExportResultGood() =>
+        ExportGoodAsync(_result?.TopArtifacts ?? [], "artifacts-good.json");
+
+    private Task ExportHuntGood() =>
+        ExportGoodAsync(
+            (_huntResult?.ItemResults ?? [])
+                .Where(r => r.Artifact is not null)
+                .Select(r => r.Artifact!),
+            "hunt-good.json");
 
     private void Reset()
     {
