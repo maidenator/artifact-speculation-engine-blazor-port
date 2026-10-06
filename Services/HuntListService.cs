@@ -85,6 +85,28 @@ public class HuntListService
     }
 
     /// <summary>
+    /// Short-term guard for the React P0 bug: a set without a domain can never
+    /// match because no set is assigned when Domain is "Any".
+    /// Callers should require a domain whenever a set is picked.
+    /// </summary>
+    public static bool ValidateDomainSet(string? domainId, string? setId, out string error)
+    {
+        if (!string.IsNullOrEmpty(setId) && string.IsNullOrEmpty(domainId))
+        {
+            error = "Pick a domain when a set is selected.";
+            return false;
+        }
+        if (!string.IsNullOrEmpty(setId) && !string.IsNullOrEmpty(domainId)
+            && !GameData.SetBelongsToDomain(setId, domainId))
+        {
+            error = "Set does not belong to the selected domain.";
+            return false;
+        }
+        error = "";
+        return true;
+    }
+
+    /// <summary>
     /// Mirrors React modal rules: slot 0-4, mainStat required, ≤4 substats,
     /// each 1-6 rolls, total rolls ≤ 5 + count (a +20 artifact has 5 upgrades + initial lines).
     /// </summary>
@@ -121,7 +143,6 @@ public class HuntListService
             error = $"Total rolls ({total}) exceed achievable {5 + item.Substats.Count}.";
             return false;
         }
-        error = "";
-        return true;
+        return ValidateDomainSet(item.DomainId, item.SetId, out error);
     }
 }

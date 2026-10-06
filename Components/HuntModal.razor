@@ -3,10 +3,10 @@
 <div class="hunt-modal-backdrop" @onclick="OnCancel">
     <div class="hunt-modal" @onclick:stopPropagation>
         <div class="hm-header">
-            <h3>Any Set</h3>
+            <h3>@(string.IsNullOrEmpty(_setId) ? "Any Set" : GameData.FindSetName(_setId))</h3>
             <button class="hm-close" @onclick="OnCancel">×</button>
         </div>
-        
+
         <div class="hm-body">
             <div class="hm-slot-row">
                 <div class="hm-slot-icons">
@@ -19,6 +19,16 @@
                     }
                 </div>
                 <div class="hm-slot-name">@ArtifactData.GetSlotName(_selectedSlot)</div>
+            </div>
+
+            <div class="hm-form-group">
+                <label>MAIN STAT</label>
+                <select value="@_selectedMainStat" @onchange="e => SelectMainStat(int.Parse(e.Value!.ToString()!))">
+                    @foreach (var stat in MainOptions)
+                    {
+                        <option value="@stat">@ArtifactData.GetMainStatName(stat)</option>
+                    }
+                </select>
             </div>
 
             <div class="hm-main-display">
@@ -40,38 +50,62 @@
             <div class="hm-dropdowns">
                 <div class="hm-form-group">
                     <label>DOMAIN</label>
-                    <select @bind="_domain">
-                        <option value="Any">Any</option>
+                    <select value="@_domainId" @onchange="e => SelectDomain(e.Value?.ToString())">
+                        <option value="">Any</option>
+                        @foreach (var domain in GameData.Domains)
+                        {
+                            <option value="@domain.Id">@domain.Name</option>
+                        }
                     </select>
                 </div>
                 <div class="hm-form-group">
                     <label>SET</label>
-                    <select @bind="_set">
-                        <option value="Any">Any</option>
+                    <select @bind="_setId">
+                        <option value="">Any</option>
+                        @foreach (var set in AvailableSets)
+                        {
+                            <option value="@set.Id">@set.Name</option>
+                        }
                     </select>
                 </div>
             </div>
 
             <div class="hm-substats">
-                <div class="hm-substats-label">DESIRED SUBSTATS (@_selectedSubstats.Count/4)</div>
+                <div class="hm-substats-label">DESIRED SUBSTATS (@_substatRolls.Count/4) — @TotalRolls/@MaxTotalRolls ROLLS</div>
                 <div class="hm-substats-grid">
                     @foreach (var stat in new[] { Stat.CritDMG, Stat.CritRate, Stat.ElementalMastery, Stat.EnergyRecharge, Stat.AtkPercent, Stat.FlatAtk, Stat.HpPercent, Stat.FlatHp, Stat.DefPercent, Stat.FlatDef })
                     {
-                        bool isSelected = _selectedSubstats.Contains(stat);
-                        bool disabled = _selectedSubstats.Count >= 4 && !isSelected;
-                        <label class="hm-checkbox @(disabled ? "disabled" : "")">
-                            <input type="checkbox" checked="@isSelected" disabled="@disabled" @onchange="() => ToggleSubstat(stat)" />
-                            <img src="@ArtifactData.GetStatIcon(ArtifactData.GetSubStatName(stat))" class="hm-stat-icon" />
-                            <span>@ArtifactData.GetSubStatName(stat)</span>
-                        </label>
+                        bool isSelected = _substatRolls.ContainsKey(stat);
+                        bool disabled = _substatRolls.Count >= 4 && !isSelected;
+                        bool isMain = _selectedMainStat == stat;
+                        <div class="hm-checkbox @(disabled || isMain ? "disabled" : "")">
+                            <label>
+                                <input type="checkbox" checked="@isSelected" disabled="@(disabled || isMain)" @onchange="() => ToggleSubstat(stat)" />
+                                <img src="@ArtifactData.GetStatIcon(ArtifactData.GetSubStatName(stat))" class="hm-stat-icon" />
+                                <span>@ArtifactData.GetSubStatName(stat)</span>
+                            </label>
+                            @if (isSelected)
+                            {
+                                <div class="hm-rolls">
+                                    <button disabled="@(_substatRolls[stat] <= 1)" @onclick="() => ChangeRolls(stat, -1)">−</button>
+                                    <span>@_substatRolls[stat]×</span>
+                                    <button disabled="@(_substatRolls[stat] >= 6 || TotalRolls >= MaxTotalRolls)" @onclick="() => ChangeRolls(stat, 1)">+</button>
+                                </div>
+                            }
+                        </div>
                     }
                 </div>
             </div>
+
+            @if (!string.IsNullOrEmpty(_error))
+            {
+                <div class="hm-error">@_error</div>
+            }
         </div>
 
         <div class="hm-footer">
             <button class="hm-btn-cancel" @onclick="OnCancel">Cancel</button>
-            <button class="hm-btn-add" @onclick="AddToHuntList">Add to Hunt List</button>
+            <button class="hm-btn-add" @onclick="AddToHuntList" disabled="@(!_selectedMainStat.HasValue)">Add to Hunt List</button>
         </div>
     </div>
 </div>
