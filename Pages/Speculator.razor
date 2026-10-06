@@ -94,11 +94,18 @@
             }
         </button>
 
-        @if (_result != null)
+        @if (_result != null || _huntResult != null)
         {
             <button class="btn-secondary" style="margin-top: 0.75rem; width: 100%;"
                     @onclick="Reset">
                 Reset
+            </button>
+        }
+        @if (_loading && HuntList.Items.Count > 0)
+        {
+            <button class="btn-secondary" style="margin-top: 0.75rem; width: 100%;"
+                    @onclick="CancelRun">
+                Cancel Hunt
             </button>
         }
     </div>
@@ -140,7 +147,44 @@
             <div class="error-banner">@_runError</div>
         }
 
-        @if (_result != null)
+        @if (_huntResult != null)
+        {
+            <div class="stat-grid animate-fade-in">
+                <div class="stat-card">
+                    <div class="stat-value">@(_huntResult.AllFound ? "Complete" : "Partial")</div>
+                    <div class="stat-label">Hunt</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-value">@_huntResult.TotalResinSpent.ToString("N0")</div>
+                    <div class="stat-label">Resin Spent</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-value">@_huntResult.TotalDays.ToString("F1")</div>
+                    <div class="stat-label">Days</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-value">@_huntResult.DomainRunsCompleted.ToString("N0")</div>
+                    <div class="stat-label">Domain Runs</div>
+                </div>
+            </div>
+
+            @foreach (var itemResult in _huntResult.ItemResults)
+            {
+                var hunt = HuntList.Items.FirstOrDefault(h => h.Id == itemResult.HuntItemId);
+                <div class="card-title" style="margin-top: 1rem;">
+                    @(hunt is null ? "Target" : $"{ArtifactData.GetSlotName(hunt.Slot)} / {(hunt.MainStat >= 0 ? ArtifactData.GetMainStatName(hunt.MainStat) : "Any")}")
+                    — @(itemResult.Found ? $"found at {itemResult.ResinSpent:N0} resin" : "not found in budget")
+                </div>
+                @if (itemResult.Artifact is not null)
+                {
+                    <div class="artifact-grid">
+                        <ArtifactCard Artifact="itemResult.Artifact" />
+                    </div>
+                }
+            }
+            <p style="font-size: 12px; color: #8c93a0;">Hunt examines every drop at exact run cost (20 resin/run, 6.5% double drops). Strongbox not modeled in hunts.</p>
+        }
+        else if (_result != null)
         {
             <div class="stat-grid animate-fade-in">
                 <div class="stat-card">
@@ -222,6 +266,8 @@
 @code {
     private SimulationSettings _settings = new();
     private SimulationResult? _result;
+    private HuntListResult? _huntResult;
+    private CancellationTokenSource? _huntCts;
     private bool _engineReady;
     private string? _engineError;
     private bool _loading;
@@ -269,15 +315,7 @@
     private void OnAddHuntItem(HuntItem item)
     {
         _showHuntModal = false;
-        if (!HuntList.Add(item))
-            return;
-
-        // Slice-2 compatibility: mirror the first hunt item into target settings
-        // so standard runs aim at it until the real hunt loop lands (slice 4).
-        var first = HuntList.Items[0];
-        _settings.TargetSlot = first.Slot;
-        _settings.TargetMainStat = first.MainStat;
-        _settings.Priority = first.Substats.Select(s => s.Stat).ToArray();
+        HuntList.Add(item);
     }
 
     private void RemoveHuntItem(string id)
@@ -316,17 +354,34 @@
         _loading = true;
         _runError = null;
         _result = null;
+        _huntResult = null;
         StateHasChanged();
-        
+
         // Yield to the UI thread so the skeleton loading screen can actually render
         await Task.Delay(1);
 
         try
         {
-            var sw = System.Diagnostics.Stopwatch.StartNew();
-            _result = await Engine.RunSimulationAsync(_settings);
-            sw.Stop();
-            _elapsedMs = sw.Elapsed.TotalMilliseconds;
+            if (HuntList.Items.Count > 0)
+            {
+                _huntCts?.Dispose();
+                _huntCts = new CancellationTokenSource();
+                var runner = new HuntRunner(count => Engine.GenerateBatchAsync(count, upgrade: true));
+                var huntResult = await runner.RunHuntAsync(HuntList.Items, _settings.ResinBudget, _huntCts.Token);
+                _huntResult = huntResult;
+                _elapsedMs = huntResult.ElapsedMs;
+            }
+            else
+            {
+                var sw = System.Diagnostics.Stopwatch.StartNew();
+                _result = await Engine.RunSimulationAsync(_settings);
+                sw.Stop();
+                _elapsedMs = sw.Elapsed.TotalMilliseconds;
+            }
+        }
+        catch (OperationCanceledException)
+        {
+            _runError = "Hunt cancelled.";
         }
         catch (Exception ex)
         {
@@ -338,10 +393,16 @@
         }
     }
 
+    private void CancelRun()
+    {
+        _huntCts?.Cancel();
+    }
+
     private void Reset()
     {
         _settings = new SimulationSettings();
         _result = null;
+        _huntResult = null;
         _elapsedMs = null;
         _runError = null;
     }

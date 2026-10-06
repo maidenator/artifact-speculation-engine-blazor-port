@@ -93,6 +93,25 @@ public static class ArtifactData
     };
 
     /// <summary>
+    /// Average substat roll values (≈ 85% of max).
+    /// Used by the hunt list to convert roll counts → minimum stat thresholds.
+    /// Ported from React <c>AVG_SUBSTAT_ROLL</c>.
+    /// </summary>
+    public static readonly Dictionary<int, double> AvgSubstatRoll = new()
+    {
+        [Stat.CritDMG] = 6.22,
+        [Stat.CritRate] = 3.11,
+        [Stat.ElementalMastery] = 18.65,
+        [Stat.EnergyRecharge] = 5.18,
+        [Stat.AtkPercent] = 4.66,
+        [Stat.FlatAtk] = 15.56,
+        [Stat.HpPercent] = 4.66,
+        [Stat.FlatHp] = 239.0,
+        [Stat.DefPercent] = 5.83,
+        [Stat.FlatDef] = 18.52,
+    };
+
+    /// <summary>
     /// The 4 exact rounded roll values per stat tier (low, mid, high, max).
     /// </summary>
     public static readonly Dictionary<int, double[]> RollValuesRounded = new()
