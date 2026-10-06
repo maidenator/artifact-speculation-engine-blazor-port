@@ -349,6 +349,7 @@
 
     private async Task RunSimulation()
     {
+        SimulationValidation.Normalize(_settings);
         if (!CanRun) return;
 
         _loading = true;
