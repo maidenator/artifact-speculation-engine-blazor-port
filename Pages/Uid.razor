@@ -1,0 +1,257 @@
+@page "/uid"
+@using System.Text.Json
+@using ArtifactSpeculationBlazor.Components
+@using ArtifactSpeculationBlazor.Models
+@using ArtifactSpeculationBlazor.Services
+@inject HttpClient Http
+@inject IJSRuntime JS
+
+<PageTitle>UID Import</PageTitle>
+
+@if (_profile is null && !_loading && _error is null)
+{
+    <div style="min-height: 80vh; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 1.25rem;">
+        <div class="card" style="max-width: 28rem; width: 100%; text-align: center;">
+            <div style="display: flex; align-items: center; justify-content: center; gap: 1rem; margin-bottom: 0.5rem;">
+                <img src="icons/speculation.png" alt="Logo" style="width: 3.5rem; height: 3.5rem; object-fit: contain;" />
+                <h1 style="font-weight: 700; font-size: 32px; color: var(--gold); line-height: 1.2; text-align: left;">Artifact<br />Speculation</h1>
+            </div>
+            <p style="color: var(--muted); font-size: 14px; margin: 1rem 0 2rem;">Enter your Genshin Impact UID to fetch your showcased characters and their artifacts via Enka.Network.</p>
+
+            <div style="display: flex; flex-direction: column; gap: 1rem;">
+                <input type="text" placeholder="Enter UID..." value="@_uid" @onchange="e => _uid = e.Value?.ToString() ?? _uid"
+                       @onkeydown="HandleKey" class="form-input" style="text-align: center; font-size: 18px;" />
+                @if (!string.IsNullOrEmpty(_uid) && !EnkaService.IsValidUid(_uid))
+                {
+                    <p style="color: var(--bad); font-size: 13px;">UID must be 9–10 digits.</p>
+                }
+                <button class="btn-primary" disabled="@(!EnkaService.IsValidUid(_uid))" @onclick="Import">Fetch Profile</button>
+            </div>
+        </div>
+    </div>
+}
+else if (_loading)
+{
+    <div style="min-height: 80vh; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2rem;">
+        <img src="icons/sumeru.png" alt="Loading" style="width: 12rem; height: 12rem; object-fit: contain;" />
+        <div style="color: var(--gold); font-size: 24px;">Connecting to Irminsul...</div>
+    </div>
+}
+else if (_error is not null && _profile is null)
+{
+    <div style="min-height: 80vh; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 1.25rem;">
+        <div class="card" style="max-width: 28rem; width: 100%; text-align: center;">
+            <h2 style="color: var(--bad); font-size: 20px; margin-bottom: 1rem;">Error</h2>
+            <p style="color: var(--muted); margin-bottom: 1.5rem;">@_error</p>
+            <button class="btn-secondary" @onclick="() => _error = null">Try Again</button>
+        </div>
+    </div>
+}
+else
+{
+    <div style="max-width: 1200px; margin: 0 auto; padding: 3rem 1.25rem 6rem; display: flex; flex-direction: column; align-items: center;">
+        @if (_profile is not null)
+        {
+            <div style="display: flex; flex-direction: column; align-items: center; margin-bottom: 4rem;">
+                <div style="width: 6rem; height: 6rem; border-radius: 50%; background: var(--card); border: 2px solid var(--gold); display: flex; align-items: center; justify-content: center; color: var(--gold); font-size: 2rem; font-weight: 700;">
+                    @_profile.Nickname[0].ToString().ToUpper()
+                </div>
+                <h1 style="font-size: 32px; font-weight: 700; margin: 1.5rem 0 0.5rem;">@_profile.Nickname</h1>
+                @if (!string.IsNullOrEmpty(_profile.Signature))
+                {
+                    <p style="color: var(--muted); font-size: 14px; font-style: italic;">"@_profile.Signature"</p>
+                }
+                <div style="display: flex; gap: 2rem; margin-top: 1rem; font-size: 14px;">
+                    <div style="display: flex; flex-direction: column; align-items: center;">
+                        <span style="color: var(--muted); font-size: 11px;">LEVEL</span>
+                        <span style="color: var(--gold); font-weight: 700; font-size: 18px;">@_profile.Level</span>
+                    </div>
+                    @if (_profile.AchievementCount.HasValue)
+                    {
+                        <div style="display: flex; flex-direction: column; align-items: center;">
+                            <span style="color: var(--muted); font-size: 11px;">ACHIEVEMENTS</span>
+                            <span style="color: var(--gold); font-weight: 700; font-size: 18px;">@_profile.AchievementCount</span>
+                        </div>
+                    }
+                    @if (_profile.AbyssFloor.HasValue)
+                    {
+                        <div style="display: flex; flex-direction: column; align-items: center;">
+                            <span style="color: var(--muted); font-size: 11px;">SPIRAL ABYSS</span>
+                            <span style="color: var(--gold); font-weight: 700; font-size: 18px;">@_profile.AbyssFloor-@_profile.AbyssChamber</span>
+                        </div>
+                    }
+                    @if (_profile.WorldLevel.HasValue)
+                    {
+                        <div style="display: flex; flex-direction: column; align-items: center;">
+                            <span style="color: var(--muted); font-size: 11px;">WORLD LEVEL</span>
+                            <span style="color: var(--gold); font-weight: 700; font-size: 18px;">@_profile.WorldLevel</span>
+                        </div>
+                    }
+                </div>
+            </div>
+        }
+
+        <div style="width: 100%;">
+            <h2 style="font-size: 20px; font-weight: 700; margin-bottom: 1.5rem; text-align: center;">Showcased Characters</h2>
+
+            @if (_characters.Count == 0)
+            {
+                <div class="card" style="text-align: center; color: var(--muted);">No characters found. Make sure "Show Character Details" is enabled in-game.</div>
+            }
+            else
+            {
+                <div style="display: flex; flex-direction: column; gap: 0.625rem; max-width: 48rem; margin: 0 auto; width: 100%;">
+                    @foreach (var ch in _characters)
+                    {
+                        <button @onclick="() => _selectedCharId = _selectedCharId == ch.AvatarId ? null : ch.AvatarId"
+                                style="background: var(--card); border: 1px solid var(--line); border-left: 4px solid @(_selectedCharId == ch.AvatarId ? "var(--gold)" : "transparent"); border-radius: 8px; padding: 0.875rem 1.25rem; display: flex; align-items: center; gap: 1.25rem; cursor: pointer; color: inherit; text-align: left; width: 100%;">
+                            <img src="@ch.IconUrl" alt="@ch.Name" @onerror="() => OnIconError(ch.AvatarId)" style="width: 3.5rem; height: 3.5rem; border-radius: 50%; object-fit: cover; background: rgba(0,0,0,0.4); @(!_brokenIcons.Contains(ch.AvatarId) ? "" : "display:none;")" />
+                            <div style="min-width: 110px;">
+                                <h3 style="font-weight: 700; font-size: 17px;">@ch.Name</h3>
+                                <div style="font-size: 12px; color: var(--gold); font-weight: 700;">Lv. @ch.Level · C@(ch.Constellation)</div>
+                            </div>
+                            <div style="margin-left: auto; display: flex; align-items: center; gap: 0.75rem;">
+                                @if (!string.IsNullOrEmpty(ch.Weapon.IconUrl))
+                                {
+                                    <img src="@ch.Weapon.IconUrl" alt="Weapon" style="width: 2.5rem; height: 2.5rem; object-fit: contain;" />
+                                }
+                                <span style="font-size: 11px; color: var(--muted);">Lv. @ch.Weapon.Level<br /><span style="color: var(--gold); font-weight: 700;">R@(ch.Weapon.Refinement)</span></span>
+                            </div>
+                        </button>
+                    }
+                </div>
+            }
+        </div>
+
+        @if (SelectedCharacter is not null)
+        {
+            <div style="width: 100%; max-width: 64rem; margin-top: 3rem;">
+                <h2 style="font-size: 20px; font-weight: 700; margin-bottom: 1rem;">@SelectedCharacter.Name's Artifacts (@SelectedCharacter.Artifacts.Count)</h2>
+                <SubstatPriority Priority="_priority" PriorityChanged="p => _priority = p" />
+                <div class="artifact-grid" style="margin-top: 1rem;">
+                    @foreach (var art in SortedArtifacts)
+                    {
+                        <ArtifactCard Artifact="art" />
+                    }
+                </div>
+                @if (SelectedCharacter.Artifacts.Count > 0)
+                {
+                    <button class="btn-secondary" style="margin-top: 1rem;" @onclick="ExportCharacterGood">Export @SelectedCharacter.Name to GOOD</button>
+                }
+            </div>
+        }
+
+        <div style="margin-top: 4rem;">
+            <button class="btn-secondary" @onclick="ResetSearch">Search Another UID</button>
+        </div>
+    </div>
+}
+
+@code {
+    private string _uid = "";
+    private bool _loading;
+    private string? _error;
+    private EnkaProfile? _profile;
+    private List<EnkaCharacter> _characters = [];
+    private int? _selectedCharId;
+    private int[] _priority = [Stat.CritDMG, Stat.CritRate];
+    private readonly HashSet<int> _brokenIcons = [];
+    private Dictionary<string, EnkaService.CharacterInfo>? _characterMap;
+
+    private EnkaCharacter? SelectedCharacter =>
+        _characters.FirstOrDefault(c => c.AvatarId == _selectedCharId);
+
+    private List<ArtifactOutput> SortedArtifacts
+    {
+        get
+        {
+            var arts = SelectedCharacter?.Artifacts ?? [];
+            if (_priority.Length == 0)
+                return arts.OrderByDescending(a => a.CritValue).ToList();
+            var weights = ScoringService.WeightsFromPriority(_priority);
+            return arts.OrderByDescending(a => ScoringService.ScoreArtifact(a, weights)).ToList();
+        }
+    }
+
+    private async Task HandleKey(KeyboardEventArgs e)
+    {
+        if (e.Key == "Enter")
+            await Import();
+    }
+
+    private async Task Import()
+    {
+        var trimmed = _uid.Trim();
+        if (!EnkaService.IsValidUid(trimmed))
+        {
+            _error = "UID must be 9–10 digits.";
+            return;
+        }
+
+        _loading = true;
+        _error = null;
+        _profile = null;
+        _characters = [];
+        _selectedCharId = null;
+        StateHasChanged();
+
+        try
+        {
+            _characterMap ??= await Http.GetFromJsonAsync<Dictionary<string, EnkaService.CharacterInfo>>(
+                "data/characters.json",
+                new System.Text.Json.JsonSerializerOptions { PropertyNameCaseInsensitive = true }) ?? [];
+
+            using var response = await Http.GetAsync($"{EnkaService.ApiBase}{trimmed}");
+            if (!response.IsSuccessStatusCode)
+            {
+                _error = (int)response.StatusCode switch
+                {
+                    400 => "Invalid UID format.",
+                    404 => "Player not found.",
+                    424 => "Enka API is under maintenance.",
+                    429 => "Rate limited by Enka API. Try again later.",
+                    500 => "Enka API server error.",
+                    _ => $"Enka API returned {(int)response.StatusCode}.",
+                };
+                return;
+            }
+
+            using var doc = await JsonDocument.ParseAsync(await response.Content.ReadAsStreamAsync());
+            var parsed = EnkaService.Parse(doc.RootElement, _characterMap);
+            if (parsed is null)
+                _error = "Invalid response from Enka API.";
+            else
+                (_profile, _characters) = parsed.Value;
+        }
+        catch (Exception ex)
+        {
+            _error = $"Failed to fetch data: {ex.Message}";
+        }
+        finally
+        {
+            _loading = false;
+        }
+    }
+
+    private async Task ExportCharacterGood()
+    {
+        if (SelectedCharacter is null)
+            return;
+        var doc = GoodExportService.ToGoodDocument(SelectedCharacter.Artifacts);
+        await JS.InvokeVoidAsync("artifactEngine.downloadFile",
+            $"{SelectedCharacter.Name}-good.json",
+            System.Text.Json.JsonSerializer.Serialize(doc),
+            "application/json");
+    }
+
+    private void ResetSearch()
+    {
+        _profile = null;
+        _characters = [];
+        _selectedCharId = null;
+        _uid = "";
+        _error = null;
+    }
+
+    private void OnIconError(int avatarId) => _brokenIcons.Add(avatarId);
+}

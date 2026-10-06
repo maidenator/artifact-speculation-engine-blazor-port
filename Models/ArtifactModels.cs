@@ -50,6 +50,42 @@ public class SandboxArtifact
     public int CurrentStep { get; set; }
 }
 
+/// <summary>
+/// Player profile from the Enka.Network API. Mirrors React <c>PlayerProfile</c>.
+/// </summary>
+public class EnkaProfile
+{
+    public string Nickname { get; set; } = "Unknown";
+    public int Level { get; set; } = 1;
+    public int? WorldLevel { get; set; }
+    public string? Signature { get; set; }
+    public int? AbyssFloor { get; set; }
+    public int? AbyssChamber { get; set; }
+    public int? AchievementCount { get; set; }
+}
+
+/// <summary>
+/// Showcased character with weapon and 5-star artifacts.
+/// Mirrors React <c>CharacterOutput</c>.
+/// </summary>
+public class EnkaCharacter
+{
+    public int AvatarId { get; set; }
+    public string Name { get; set; } = "";
+    public int Level { get; set; } = 1;
+    public string IconUrl { get; set; } = "";
+    public EnkaWeapon Weapon { get; set; } = new();
+    public List<ArtifactOutput> Artifacts { get; set; } = [];
+    public int Constellation { get; set; }
+}
+
+public class EnkaWeapon
+{
+    public int Level { get; set; } = 1;
+    public int Refinement { get; set; } = 1;
+    public string IconUrl { get; set; } = "";
+}
+
 public class SubstatEntry
 {
     [JsonPropertyName("type")]
