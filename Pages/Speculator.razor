@@ -81,6 +81,8 @@
                 </select>
             </div>
 
+            <SubstatPriority Priority="_settings.Priority" PriorityChanged="OnPriorityChanged" />
+
         <button class="btn-primary @(_loading ? "loading" : "")"
                 disabled="@(!CanRun)"
                 @onclick="RunSimulation">
@@ -312,6 +314,11 @@
         {
             // Ignore persistence failures.
         }
+    }
+
+    private void OnPriorityChanged(int[] priority)
+    {
+        _settings.Priority = priority;
     }
 
     private void OnAddHuntItem(HuntItem item)

@@ -92,6 +92,27 @@ public static class ArtifactData
         [Stat.FlatDef] = 23.2,
     };
 
+    public static readonly int[] SubstatIds =
+    [
+        Stat.CritDMG, Stat.CritRate, Stat.ElementalMastery, Stat.EnergyRecharge,
+        Stat.AtkPercent, Stat.FlatAtk, Stat.HpPercent, Stat.FlatHp,
+        Stat.DefPercent, Stat.FlatDef,
+    ];
+
+    /// <summary>
+    /// Pre-defined weight presets. Ported from React <c>WEIGHT_PRESETS</c>.
+    /// </summary>
+    public static readonly List<(string Label, Dictionary<int, double> Weights)> WeightPresets =
+    [
+        ("Crit Value", new() { [Stat.CritDMG] = 1, [Stat.CritRate] = 1 }),
+        ("ER% + HP%", new() { [Stat.EnergyRecharge] = 1, [Stat.HpPercent] = 1 }),
+        ("Crit + ATK%", new() { [Stat.CritDMG] = 1, [Stat.CritRate] = 1, [Stat.AtkPercent] = 0.5 }),
+        ("Crit + ER%", new() { [Stat.CritDMG] = 1, [Stat.CritRate] = 1, [Stat.EnergyRecharge] = 0.5 }),
+        ("Crit + EM", new() { [Stat.CritDMG] = 1, [Stat.CritRate] = 1, [Stat.ElementalMastery] = 0.5 }),
+        ("Crit + HP%", new() { [Stat.CritDMG] = 1, [Stat.CritRate] = 1, [Stat.HpPercent] = 0.5 }),
+        ("Crit + DEF%", new() { [Stat.CritDMG] = 1, [Stat.CritRate] = 1, [Stat.DefPercent] = 0.5 }),
+    ];
+
     /// <summary>
     /// Average substat roll values (≈ 85% of max).
     /// Used by the hunt list to convert roll counts → minimum stat thresholds.

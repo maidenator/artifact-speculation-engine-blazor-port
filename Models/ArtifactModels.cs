@@ -126,7 +126,11 @@ public class SimulationSettings
     public double MinCritValue { get; set; } = 25;
     public int? TargetSlot { get; set; }
     public int? TargetMainStat { get; set; }
-    public int[] Priority { get; set; } = [];
+
+    /// <summary>
+    /// Default matches React: priorityFrom(WEIGHT_PRESETS[0]) = Crit DMG + Crit Rate.
+    /// </summary>
+    public int[] Priority { get; set; } = [Stat.CritDMG, Stat.CritRate];
 }
 
 public class SubstatWeight

@@ -7,6 +7,17 @@ namespace ArtifactSpeculationBlazor.Tests;
 public class ScoringServiceTests
 {
     [Fact]
+    public void PriorityFrom_CritValuePresetMatchesDefaultSettings()
+    {
+        var preset = ArtifactData.WeightPresets[0];
+        Assert.Equal("Crit Value", preset.Label);
+
+        var priority = ScoringService.PriorityFrom(preset.Weights);
+        Assert.Equal([Stat.CritDMG, Stat.CritRate], priority);
+        Assert.Equal(priority, new SimulationSettings().Priority);
+    }
+
+    [Fact]
     public void PriorityFrom_OrdersByWeightDescendingAndDropsNonPositive()
     {
         var priority = ScoringService.PriorityFrom(new Dictionary<int, double>

@@ -1,0 +1,66 @@
+@using ArtifactSpeculationBlazor.Models
+@using ArtifactSpeculationBlazor.Services
+
+<details open style="margin-top: 1.5rem; border: none;">
+    <summary style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.75rem; list-style: none; cursor: default;">
+        <div style="display: flex; flex-direction: column; gap: 2px;">
+            <span style="font-weight: 700; font-size: 17.6px;">Substat Priority</span>
+            <span style="margin-top: 5px; font-size: 12.5px; color: #8c93a0; opacity: 0.7;">Select None for Pure Crit Value</span>
+        </div>
+    </summary>
+
+    <p style="margin-top: 1rem; font-size: 13px; color: #8c93a0;">Some pre-defined presets</p>
+    <div style="display: flex; flex-wrap: wrap; gap: 6px; margin-top: 0.5rem;">
+        @foreach (var preset in ArtifactData.WeightPresets)
+        {
+            <button type="button" style="padding: 4px 12px; font-size: 12.5px; color: #8c93a0; background: rgba(255,255,255,0.05); border: 1px solid var(--line); border-radius: 16px; cursor: pointer;" @onclick="() => ApplyPreset(preset.Weights)">
+                @preset.Label
+            </button>
+        }
+    </div>
+
+    <p style="margin-top: 1rem; font-size: 13px; color: #8c93a0;">Sort by Affix</p>
+    <div style="display: flex; flex-wrap: wrap; gap: 6px; margin-top: 0.5rem;">
+        @foreach (var id in OrderedIds)
+        {
+            int rank = CurrentPriority.IndexOf(id);
+            bool picked = rank != -1;
+            <button type="button" aria-pressed="@picked" @onclick="() => Toggle(id)" style="padding: 4px 12px; font-size: 12.5px; border: 1px solid @(picked ? "#d5894b" : "var(--line)"); border-radius: 16px; cursor: pointer; color: @(picked ? "#d5894b" : "#8c93a0"); background: @(picked ? "rgba(228,183,106,0.15)" : "rgba(255,255,255,0.05)")">
+                @if (picked)
+                {
+                    <span style="width: 20px; height: 20px; border-radius: 50%; background: #d5894b; color: white; display: inline-flex; align-items: center; justify-content: center;">@(rank + 1)</span>
+                }
+                else
+                {
+                    <span>+</span>
+                }
+                @ArtifactData.GetSubStatName(id)
+            </button>
+        }
+    </div>
+</details>
+
+@code {
+    [Parameter] public int[] Priority { get; set; } = [];
+    [Parameter] public EventCallback<int[]> PriorityChanged { get; set; }
+
+    private List<int> CurrentPriority => Priority?.ToList() ?? [];
+
+    private IEnumerable<int> OrderedIds =>
+        CurrentPriority.Concat(ArtifactData.SubstatIds.Where(id => !CurrentPriority.Contains(id)));
+
+    private async Task ApplyPreset(Dictionary<int, double> weights)
+    {
+        await PriorityChanged.InvokeAsync(ScoringService.PriorityFrom(weights));
+    }
+
+    private async Task Toggle(int id)
+    {
+        var list = CurrentPriority;
+        if (list.Contains(id))
+            list.Remove(id);
+        else
+            list.Add(id);
+        await PriorityChanged.InvokeAsync(list.ToArray());
+    }
+}
