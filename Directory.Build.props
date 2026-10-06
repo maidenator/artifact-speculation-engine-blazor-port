@@ -1,0 +1,8 @@
+<Project>
+  <!-- Review §3 (supply chain) + §4 (strict is free): fail restores with
+       known-vulnerable packages and fail builds on any C# warning. -->
+  <PropertyGroup>
+    <NuGetAudit>true</NuGetAudit>
+    <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
+  </PropertyGroup>
+</Project>
