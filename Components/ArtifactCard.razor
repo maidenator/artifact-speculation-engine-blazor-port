@@ -54,7 +54,7 @@
             {
                 var sub = Artifact.SubStats[idx];
                 var subName = ArtifactData.GetSubStatName(sub.Type);
-                var subIcon = ArtifactData.GetStatIcon(subName);
+                var subIcon = ArtifactData.GetStatIcon(sub.Type);
                 var rollTiers = sub.RollTiers ?? ArtifactData.InferRollTiers(sub.Type, sub.Value, sub.Rolls);
                 var isAnimating = UpgradeAnimation?.SubstatIndex == idx;
 
@@ -89,7 +89,7 @@
             @if (PreviewSubstat != null && Artifact.SubStats.Count < 4)
             {
                 var prevName = ArtifactData.GetSubStatName(PreviewSubstat.Value.Type);
-                var prevIcon = ArtifactData.GetStatIcon(prevName);
+                var prevIcon = ArtifactData.GetStatIcon(PreviewSubstat.Value.Type);
 
                 <li class="ac-substat-row ac-preview">
                     <span class="ac-substat-left">
@@ -141,7 +141,7 @@
     protected override void OnParametersSet()
     {
         _mainStatName = ArtifactData.GetMainStatName(Artifact.MainStat.Type);
-        _mainStatIcon = ArtifactData.GetStatIcon(_mainStatName);
+        _mainStatIcon = ArtifactData.GetStatIcon(Artifact.MainStat.Type);
         _tierClass = ArtifactData.CvTier(Artifact.CritValue);
 
         var slotName = ArtifactData.GetSlotName(Artifact.Slot);

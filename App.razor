@@ -3,7 +3,17 @@
 
 <Router AppAssembly="typeof(App).Assembly">
     <Found Context="routeData">
-        <RouteView RouteData="routeData" DefaultLayout="typeof(MainLayout)" />
+        <ErrorBoundary>
+            <ChildContent>
+                <RouteView RouteData="routeData" DefaultLayout="typeof(MainLayout)" />
+            </ChildContent>
+            <ErrorContent>
+                <LayoutView Layout="typeof(MainLayout)">
+                    <p role="alert">Something went wrong rendering this page.</p>
+                    <a href="" class="btn-secondary">Reload the app</a>
+                </LayoutView>
+            </ErrorContent>
+        </ErrorBoundary>
         <FocusOnNavigate RouteData="routeData" Selector="h1" />
     </Found>
     <NotFound>

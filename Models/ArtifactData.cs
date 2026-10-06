@@ -166,33 +166,35 @@ public static class ArtifactData
     public static string GetSubStatName(int type) =>
         SubStatNames.GetValueOrDefault(type, $"Stat {type}");
 
-    public static string? GetStatIcon(string statName)
+    /// <summary>
+    /// Stat icons keyed by stat ID (review §4: never match display names —
+    /// renaming a label must not break icons).
+    /// </summary>
+    public static readonly Dictionary<int, string> StatIcons = new()
     {
-        if (statName.Contains("Anemo")) return "icons/element/anemo.png";
-        if (statName.Contains("Cryo")) return "icons/element/cryo.png";
-        if (statName.Contains("Dendro")) return "icons/element/dendro.png";
-        if (statName.Contains("Electro")) return "icons/element/electro.png";
-        if (statName.Contains("Geo")) return "icons/element/geo.png";
-        if (statName.Contains("Hydro")) return "icons/element/hydro.png";
-        if (statName.Contains("Pyro")) return "icons/element/pyro.png";
-        if (statName.Contains("Physical")) return "icons/element/physical.png";
+        [Stat.CritDMG] = "icons/stat/crit_damage.png",
+        [Stat.CritRate] = "icons/stat/crit_rate.png",
+        [Stat.ElementalMastery] = "icons/stat/elemental_mastery.png",
+        [Stat.EnergyRecharge] = "icons/stat/energy_recharge.png",
+        [Stat.AtkPercent] = "icons/stat/attack_percent.png",
+        [Stat.FlatAtk] = "icons/stat/attack.png",
+        [Stat.HpPercent] = "icons/stat/hp_percent.png",
+        [Stat.FlatHp] = "icons/stat/hp.png",
+        [Stat.DefPercent] = "icons/stat/defense_percent.png",
+        [Stat.FlatDef] = "icons/stat/defense.png",
+        [Stat.HealingBonus] = "icons/stat/healing_bonus.png",
+        [Stat.PyroDMG] = "icons/element/pyro.png",
+        [Stat.HydroDMG] = "icons/element/hydro.png",
+        [Stat.ElectroDMG] = "icons/element/electro.png",
+        [Stat.CryoDMG] = "icons/element/cryo.png",
+        [Stat.AnemoDMG] = "icons/element/anemo.png",
+        [Stat.GeoDMG] = "icons/element/geo.png",
+        [Stat.DendroDMG] = "icons/element/dendro.png",
+        [Stat.PhysicalDMG] = "icons/element/physical.png",
+    };
 
-        if (statName.Contains("ATK %")) return "icons/stat/attack_percent.png";
-        if (statName.Contains("DEF %")) return "icons/stat/defense_percent.png";
-        if (statName.Contains("HP %")) return "icons/stat/hp_percent.png";
-
-        if (statName.Contains("ATK")) return "icons/stat/attack.png";
-        if (statName.Contains("DEF")) return "icons/stat/defense.png";
-        if (statName.Contains("HP")) return "icons/stat/hp.png";
-
-        if (statName.Contains("Crit DMG")) return "icons/stat/crit_damage.png";
-        if (statName.Contains("Crit Rate")) return "icons/stat/crit_rate.png";
-        if (statName.Contains("Elemental Mastery")) return "icons/stat/elemental_mastery.png";
-        if (statName.Contains("Energy Recharge")) return "icons/stat/energy_recharge.png";
-        if (statName.Contains("Healing")) return "icons/stat/healing_bonus.png";
-
-        return null;
-    }
+    public static string? GetStatIcon(int statId) =>
+        StatIcons.GetValueOrDefault(statId);
 
     public static string CvTier(double cv) =>
         cv > 50 ? "cv-max" : cv >= 40 ? "cv-top" : cv >= 30 ? "cv-high" : cv >= 20 ? "cv-mid" : "cv-low";

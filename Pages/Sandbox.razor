@@ -68,7 +68,7 @@
         </div>
     </div>
 
-    <div class="results-panel">
+    <div class="results-panel" aria-busy="@_loading" aria-live="polite">
         @if (_runError != null)
         {
             <div class="error-banner">@_runError</div>

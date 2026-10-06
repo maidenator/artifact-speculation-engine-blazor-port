@@ -182,7 +182,7 @@
     </div>
 
     <!-- Results Panel -->
-    <div class="results-panel">
+    <div class="results-panel" aria-busy="@_loading" aria-live="polite">
         @if (_runError != null)
         {
             <div class="error-banner">@_runError</div>
@@ -362,6 +362,41 @@
     {
         HuntList.OnChange += PersistAndRefresh;
         await LoadHuntListAsync();
+        await LoadSettingsAsync();
+    }
+
+    private async Task LoadSettingsAsync()
+    {
+        try
+        {
+            var json = await JS.InvokeAsync<string>("localStorage.getItem", "sim-settings");
+            if (!string.IsNullOrWhiteSpace(json))
+            {
+                var loaded = System.Text.Json.JsonSerializer.Deserialize<SimulationSettings>(json);
+                if (loaded is not null)
+                {
+                    SimulationValidation.Normalize(loaded);
+                    _settings = loaded;
+                }
+            }
+        }
+        catch
+        {
+            // localStorage unavailable — keep defaults.
+        }
+    }
+
+    private async Task PersistSettingsAsync()
+    {
+        try
+        {
+            await JS.InvokeVoidAsync("localStorage.setItem", "sim-settings",
+                System.Text.Json.JsonSerializer.Serialize(_settings));
+        }
+        catch
+        {
+            // Ignore persistence failures.
+        }
     }
 
     private async Task LoadHuntListAsync()
@@ -475,6 +510,8 @@
     {
         SimulationValidation.Normalize(_settings);
         if (!CanRun) return;
+
+        await PersistSettingsAsync();
 
         _loading = true;
         _runError = null;

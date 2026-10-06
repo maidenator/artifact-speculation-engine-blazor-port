@@ -259,6 +259,12 @@ html, body {
     height: 0;
 }
 
+/* Review §6: the toggle must show a visible focus ring for keyboard users. */
+.toggle-switch input:focus-visible + .toggle-track {
+    outline: 2px solid var(--accent);
+    outline-offset: 2px;
+}
+
 .toggle-track {
     position: absolute;
     inset: 0;

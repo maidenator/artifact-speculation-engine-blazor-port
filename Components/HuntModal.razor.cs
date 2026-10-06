@@ -1,4 +1,5 @@
 using Microsoft.AspNetCore.Components;
+using Microsoft.AspNetCore.Components.Web;
 using ArtifactSpeculationBlazor.Models;
 using ArtifactSpeculationBlazor.Services;
 
@@ -18,6 +19,21 @@ public partial class HuntModal : ComponentBase
     private string? _setId;
     private string? _error;
     private string? _loadedItemId;
+    private ElementReference _dialogRef;
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            try { await _dialogRef.FocusAsync(); } catch { /* focus is best-effort */ }
+        }
+    }
+
+    private async Task OnKeyDown(KeyboardEventArgs e)
+    {
+        if (e.Key == "Escape")
+            await OnCancel.InvokeAsync();
+    }
 
     protected override void OnParametersSet()
     {

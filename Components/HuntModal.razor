@@ -1,7 +1,8 @@
 @using ArtifactSpeculationBlazor.Models
 
 <div class="hunt-modal-backdrop" @onclick="OnCancel">
-    <div class="hunt-modal" @onclick:stopPropagation>
+    <div class="hunt-modal" @onclick:stopPropagation role="dialog" aria-modal="true" aria-label="Hunt item editor"
+         tabindex="-1" @ref="_dialogRef" @onkeydown="OnKeyDown">
         <div class="hm-header">
             <h3>@(string.IsNullOrEmpty(_setId) ? "Any Set" : GameData.FindSetName(_setId))</h3>
             <button class="hm-close" @onclick="OnCancel">×</button>
@@ -81,7 +82,7 @@
                         <div class="hm-checkbox @(disabled || isMain ? "disabled" : "")">
                             <label>
                                 <input type="checkbox" checked="@isSelected" disabled="@(disabled || isMain)" @onchange="() => ToggleSubstat(stat)" />
-                                <img src="@ArtifactData.GetStatIcon(ArtifactData.GetSubStatName(stat))" class="hm-stat-icon" />
+                                <img src="@ArtifactData.GetStatIcon(stat)" class="hm-stat-icon" />
                                 <span>@ArtifactData.GetSubStatName(stat)</span>
                             </label>
                             @if (isSelected)
