@@ -4,6 +4,21 @@
 let engine = null;
 let moduleInstance = null;
 
+/**
+ * Query string of this bridge's own <script> tag (e.g. "?v=abc123").
+ * build-wasm.* stamps the same ?v= onto artifact_engine.js, so deriving it
+ * here keeps the .wasm fetch versioned in lockstep without build edits.
+ */
+function bridgeVersion() {
+    try {
+        const src = document.currentScript?.src || '';
+        const q = src.indexOf('?');
+        return q >= 0 ? src.substring(q) : '';
+    } catch {
+        return '';
+    }
+}
+
 window.artifactEngine = {
     /**
      * Initialize the WASM module and create an ArtifactInterface instance.
@@ -15,7 +30,7 @@ window.artifactEngine = {
         moduleInstance = await createArtifactEngine({
             locateFile(path) {
                 if (path.endsWith('.wasm')) {
-                    return 'wasm/artifact_engine.wasm';
+                    return 'wasm/artifact_engine.wasm' + bridgeVersion();
                 }
                 return path;
             }

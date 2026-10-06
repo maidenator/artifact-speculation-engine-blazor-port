@@ -44,6 +44,15 @@ em++ -O3 `
 
 if ($LASTEXITCODE -eq 0) {
     Write-Host "`nWebAssembly build succeeded! Generated files in wwwroot/wasm/" -ForegroundColor Green
+
+    # 4. Stamp the glue URL in index.html so browsers never mix a stale cached
+    # glue with a fresh wasm (their export maps must match exactly).
+    $wasmHash = (Get-FileHash "wwwroot/wasm/artifact_engine.wasm" -Algorithm SHA256).Hash.Substring(0, 12).ToLower()
+    $indexPath = "wwwroot/index.html"
+    $indexHtml = Get-Content -Raw -LiteralPath $indexPath
+    $stamped = [regex]::Replace($indexHtml, "wasm/artifact_engine\.js(\?v=[0-9a-f]+)?", "wasm/artifact_engine.js?v=$wasmHash")
+    Set-Content -NoNewline -LiteralPath $indexPath -Value $stamped
+    Write-Host "Stamped engine version v=$wasmHash into wwwroot/index.html" -ForegroundColor Green
     Write-Host "Done!" -ForegroundColor Green
 } else {
     Write-Host "`nBuild failed with exit code $LASTEXITCODE" -ForegroundColor Red

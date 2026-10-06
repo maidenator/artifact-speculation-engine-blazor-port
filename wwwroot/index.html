@@ -18,7 +18,9 @@
     <link href="ArtifactSpeculationBlazor.styles.css" rel="stylesheet" />
 
     <!-- Load the Emscripten-generated JS glue (exposes global createArtifactEngine) -->
-    <script src="wasm/artifact_engine.js"></script>
+    <!-- The ?v= hash is rewritten by build-wasm.* on every rebuild so browsers
+         never mix a stale glue with a fresh wasm (their export maps must match). -->
+    <script src="wasm/artifact_engine.js?v=ee2f8985f7cf"></script>
     <!-- Our thin bridge that Blazor calls via IJSRuntime -->
     <script src="js/wasmBridge.js"></script>
 

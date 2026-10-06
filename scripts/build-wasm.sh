@@ -29,3 +29,9 @@ em++ -O3 \
     -o wwwroot/wasm/artifact_engine.js
 
 echo "WebAssembly build succeeded! Generated files in wwwroot/wasm/"
+
+# Stamp the glue URL so browsers never mix a stale cached glue with a fresh
+# wasm (their export maps must match exactly).
+HASH=$(sha256sum wwwroot/wasm/artifact_engine.wasm | cut -c1-12)
+sed -i -E "s|wasm/artifact_engine\.js(\?v=[0-9a-f]+)?|wasm/artifact_engine.js?v=${HASH}|g" wwwroot/index.html
+echo "Stamped engine version v=${HASH} into wwwroot/index.html"
