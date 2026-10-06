@@ -1,11 +1,19 @@
 ﻿@page "/sandbox"
+@using ArtifactSpeculationBlazor.Components
+@using ArtifactSpeculationBlazor.Models
+@using ArtifactSpeculationBlazor.Services
 @inject ArtifactEngineService Engine
+@implements IDisposable
 
 <PageTitle>Artifact Sandbox</PageTitle>
 
 <div class="app-header">
     <h1>Artifact Sandbox</h1>
     <p class="subtitle">Generate and inspect individual artifacts</p>
+    <p role="status" style="font-size: 13px; color: #8c93a0;">
+        <span style="display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: @(_engineReady ? "var(--ok)" : "var(--muted)");"></span>
+        @(_engineReady ? "Engine ready" : "Loading engine...")
+    </p>
 </div>
 
 <div class="content-grid">
@@ -14,17 +22,20 @@
             <div class="card-title">Generate</div>
 
             <div class="form-group">
-                <label class="form-label" for="batchCount">Count</label>
-                <input id="batchCount" type="number" class="form-input"
-                       @bind="_count" min="1" max="1000" />
+                <label class="form-label" for="sandboxDomain">Domain</label>
+                <select id="sandboxDomain" class="form-select" value="@_domainId" @onchange="e => _domainId = e.Value?.ToString()">
+                    <option value="">Any</option>
+                    @foreach (var domain in GameData.Domains)
+                    {
+                        <option value="@domain.Id">@domain.Name</option>
+                    }
+                </select>
             </div>
 
-            <div class="toggle-row">
-                <span class="form-label" style="margin-bottom: 0;">Upgrade to +20</span>
-                <label class="toggle-switch">
-                    <input type="checkbox" @bind="_upgrade" />
-                    <span class="toggle-track"></span>
-                </label>
+            <div class="form-group">
+                <label class="form-label" for="batchCount">Count</label>
+                <input id="batchCount" type="number" class="form-input"
+                       @bind="_count" min="1" max="50" />
             </div>
 
             <button class="btn-primary @(_loading ? "loading" : "")"
@@ -39,17 +50,71 @@
                     <span>Generate @_count Artifact@(_count != 1 ? "s" : "")</span>
                 }
             </button>
+
+            @if (_artifacts.Count > 0)
+            {
+                <div style="display: flex; gap: 0.5rem; flex-wrap: wrap; margin-top: 0.75rem;">
+                    <button class="btn-secondary" disabled="@AllMaxed" @onclick="UpgradeAll">Upgrade All +4</button>
+                    <button class="btn-secondary" disabled="@AllMaxed" @onclick="MaxAll">Max All (+20)</button>
+                    <button class="btn-secondary" disabled="@AllBase" @onclick="ResetAll">Reset All</button>
+                </div>
+            }
+        </div>
+
+        <div class="card" style="margin-top: 1rem;">
+            <div class="card-title">Sandbox Config</div>
+            <p style="font-size: 12.5px; color: #8c93a0;">Prioritize substats to sort your artifacts</p>
+            <SubstatPriority Priority="_priority" PriorityChanged="p => _priority = p" />
         </div>
     </div>
 
     <div class="results-panel">
-        @if (_artifacts.Count > 0)
+        @if (_runError != null)
         {
-            <div class="card-title">Generated Artifacts (@_artifacts.Count)</div>
+            <div class="error-banner">@_runError</div>
+        }
+
+        @if (SortedArtifacts.Count > 0)
+        {
+            <div class="card-title">Generated Artifacts (@SortedArtifacts.Count)</div>
+            @if (_priority.Length > 0)
+            {
+                <p style="font-size: 12px; color: #8c93a0;">Sorted by priority</p>
+            }
             <div class="artifact-grid">
-                @foreach (var art in _artifacts)
+                @foreach (var (sandboxArt, idx) in SortedArtifacts.Select((a, i) => (a, i)))
                 {
-                    <ArtifactCard Artifact="art" />
+                    var display = sandboxArt.History[sandboxArt.CurrentStep];
+                    bool maxed = sandboxArt.CurrentStep >= 5;
+                    var preview = SandboxService.PreviewSubstat(sandboxArt.History, sandboxArt.CurrentStep);
+                    _anims.TryGetValue(sandboxArt.Id, out var anim);
+                    <div style="display: flex; flex-direction: column; gap: 0.5rem; width: 100%; max-width: 300px; margin: 0 auto;">
+                        <ArtifactCard Artifact="display"
+                                      Rank="@(idx + 1)"
+                                      PreviewSubstat="@(preview is null ? null : new ArtifactCard.SubstatPreview { Type = preview.Type, Value = preview.Value })"
+                                      UpgradeAnimation="anim?.Info" />
+                        <div style="display: flex; align-items: center; gap: 0.5rem;">
+                            <button class="btn-secondary" style="flex: 1;" disabled="@maxed" @onclick="() => UpgradeOne(sandboxArt.Id)">
+                                @(maxed ? "Maxed" : $"Enhance {SandboxService.LevelLabels[sandboxArt.CurrentStep + 1]}")
+                            </button>
+                            <div style="display: flex; gap: 4px;">
+                                @for (int step = 0; step < SandboxService.LevelLabels.Length; step++)
+                                {
+                                    <span title="@SandboxService.LevelLabels[step]" style="width: 8px; height: 8px; border-radius: 50%; background: @(step <= sandboxArt.CurrentStep ? "#d5894b" : "var(--line)");"></span>
+                                }
+                            </div>
+                        </div>
+                    </div>
+                }
+            </div>
+        }
+        else if (_loading)
+        {
+            <div class="card-title" style="margin-top: 1rem;">Generating...</div>
+            <div class="artifact-grid">
+                @for (int i = 0; i < Math.Min(4, _count); i++)
+                {
+                    <SkeletonArtifactCard />
                 }
             </div>
         }
@@ -65,11 +130,33 @@
 </div>
 
 @code {
-    private int _count = 10;
-    private bool _upgrade = true;
+    private int _count = 5;
+    private string? _domainId;
+    private int[] _priority = [];
     private bool _loading;
     private bool _engineReady;
-    private List<ArtifactOutput> _artifacts = [];
+    private string? _runError;
+    private List<SandboxArtifact> _artifacts = [];
+    private readonly Dictionary<string, AnimEntry> _anims = [];
+    private int _animKey;
+
+    private record AnimEntry(ArtifactCard.UpgradeAnimationInfo Info, CancellationTokenSource Cts);
+
+    private List<SandboxArtifact> SortedArtifacts
+    {
+        get
+        {
+            if (_priority.Length == 0)
+                return _artifacts;
+            var weights = ScoringService.WeightsFromPriority(_priority);
+            return _artifacts
+                .OrderByDescending(a => ScoringService.ScoreArtifact(a.History[a.CurrentStep], weights))
+                .ToList();
+        }
+    }
+
+    private bool AllMaxed => _artifacts.Count > 0 && _artifacts.All(a => a.CurrentStep >= 5);
+    private bool AllBase => _artifacts.Count > 0 && _artifacts.All(a => a.CurrentStep == 0);
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
@@ -94,19 +181,101 @@
         if (!_engineReady || _loading) return;
 
         _loading = true;
+        _runError = null;
+        ClearAnims();
         StateHasChanged();
+        await Task.Delay(1);
 
         try
         {
-            _artifacts = await Engine.GenerateBatchAsync(_count, _upgrade);
+            _count = Math.Clamp(_count, 1, 50);
+            var histories = await Engine.GenerateBatchHistoryAsync(_count);
+            _artifacts = SandboxService.PrepareHistories(histories, _domainId);
         }
         catch (Exception ex)
         {
-            Console.Error.WriteLine($"Batch generation error: {ex.Message}");
+            _runError = $"Generation error: {ex.Message}";
         }
         finally
         {
             _loading = false;
         }
+    }
+
+    private void UpgradeOne(string id)
+    {
+        var art = _artifacts.FirstOrDefault(a => a.Id == id);
+        if (art is null || art.CurrentStep >= 5)
+            return;
+
+        // Compute the diff before stepping (pure — no state-updater side effects).
+        var diff = SandboxService.ComputeDiff(art.History[art.CurrentStep], art.History[art.CurrentStep + 1]);
+        art.CurrentStep++;
+        if (diff is not null)
+            PlayAnim(id, diff);
+    }
+
+    private void UpgradeAll()
+    {
+        ClearAnims();
+        foreach (var art in _artifacts)
+            UpgradeOne(art.Id);
+    }
+
+    private void MaxAll()
+    {
+        ClearAnims();
+        foreach (var art in _artifacts)
+            art.CurrentStep = 5;
+    }
+
+    private void ResetAll()
+    {
+        ClearAnims();
+        foreach (var art in _artifacts)
+            art.CurrentStep = 0;
+    }
+
+    private void PlayAnim(string id, SandboxService.SandboxDiff diff)
+    {
+        if (_anims.TryGetValue(id, out var existing))
+        {
+            existing.Cts.Cancel();
+            existing.Cts.Dispose();
+            _anims.Remove(id);
+        }
+
+        var cts = new CancellationTokenSource();
+        _anims[id] = new AnimEntry(new ArtifactCard.UpgradeAnimationInfo
+        {
+            SubstatIndex = diff.SubstatIndex,
+            Delta = diff.Delta,
+            RollTier = diff.RollTier,
+            StatType = diff.StatType,
+            Key = ++_animKey,
+        }, cts);
+
+        _ = Task.Delay(600, cts.Token).ContinueWith(t =>
+        {
+            if (t.IsCanceled)
+                return;
+            _anims.Remove(id);
+            InvokeAsync(StateHasChanged);
+        }, TaskScheduler.Default);
+    }
+
+    private void ClearAnims()
+    {
+        foreach (var entry in _anims.Values)
+        {
+            entry.Cts.Cancel();
+            entry.Cts.Dispose();
+        }
+        _anims.Clear();
+    }
+
+    public void Dispose()
+    {
+        ClearAnims();
     }
 }

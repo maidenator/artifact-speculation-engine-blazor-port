@@ -39,6 +39,17 @@ public class HuntListResult
     public double ElapsedMs { get; set; }
 }
 
+/// <summary>
+/// One sandbox artifact: its full +0…+20 upgrade history plus the
+/// currently displayed step. Mirrors React <c>SandboxArtifact</c>.
+/// </summary>
+public class SandboxArtifact
+{
+    public string Id { get; set; } = Guid.NewGuid().ToString();
+    public List<ArtifactOutput> History { get; set; } = [];
+    public int CurrentStep { get; set; }
+}
+
 public class SubstatEntry
 {
     [JsonPropertyName("type")]
