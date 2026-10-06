@@ -12,10 +12,16 @@ namespace ArtifactSpeculationBlazor.Services;
 public static partial class EnkaService
 {
     /// <summary>
-    /// Same-origin proxy endpoint served by ArtifactSpeculationBlazor.Server.
+    /// Enka proxy endpoint. Same-origin in production (served by
+    /// ArtifactSpeculationBlazor.Server); absolute dev-server URL in DEBUG,
+    /// when the UI runs on the Blazor dev server and only the API on Server.
     /// Enka sends no CORS headers, so the browser cannot call it directly.
     /// </summary>
+#if DEBUG
+    public const string ApiBase = "http://localhost:5198/enka-api/uid/";
+#else
     public const string ApiBase = "/enka-api/uid/";
+#endif
     public const string ImageBase = "https://gi.yatta.moe/assets/UI/";
 
     [GeneratedRegex(@"^\d{9,10}$")]

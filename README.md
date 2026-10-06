@@ -23,9 +23,16 @@ Blazor (C#)  →  IJSRuntime  →  wasmBridge.js  →  Emscripten glue  →  C++
 # Build the C++ engine to WebAssembly (run after any C++ changes)
 .\build-wasm.ps1
 
-# Run the Blazor app (serves the client + the Enka proxy below)
+# Run the Blazor dev server (UI + hot reload)
+dotnet run --project ArtifactSpeculationBlazor.csproj
+
+# In a second terminal: run the API host (Enka proxy, required for UID import)
 dotnet run --project ArtifactSpeculationBlazor.Server
 ```
+
+The app runs at http://localhost:5216. In production, publish the Server
+(`dotnet publish ArtifactSpeculationBlazor.Server`) — it serves the app and
+the proxy same-origin from a single process.
 
 ### UID import / Enka proxy
 
