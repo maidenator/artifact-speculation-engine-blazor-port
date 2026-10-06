@@ -23,6 +23,14 @@ Blazor (C#)  →  IJSRuntime  →  wasmBridge.js  →  Emscripten glue  →  C++
 # Build the C++ engine to WebAssembly (run after any C++ changes)
 .\build-wasm.ps1
 
-# Run the Blazor app
-dotnet run
+# Run the Blazor app (serves the client + the Enka proxy below)
+dotnet run --project ArtifactSpeculationBlazor.Server
 ```
+
+### UID import / Enka proxy
+
+The Enka.Network API sends no CORS headers, so browsers block direct calls.
+`ArtifactSpeculationBlazor.Server` serves the app and forwards
+`GET /enka-api/uid/{uid}` to Enka server-side (validating the UID first and
+identifying with a `User-Agent`, as Enka requests). Static-only hosts need to
+provide `/enka-api/uid/*` the same way (e.g. a serverless rewrite).

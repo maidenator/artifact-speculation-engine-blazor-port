@@ -5,7 +5,7 @@
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
     <OverrideHtmlAssetPlaceholders>true</OverrideHtmlAssetPlaceholders>
-    <DefaultItemExcludes>$(DefaultItemExcludes);ArtifactSpeculationBlazor.Tests/**/*</DefaultItemExcludes>
+    <DefaultItemExcludes>$(DefaultItemExcludes);ArtifactSpeculationBlazor.Tests/**/*;ArtifactSpeculationBlazor.Server/**/*</DefaultItemExcludes>
   </PropertyGroup>
 
   <ItemGroup>

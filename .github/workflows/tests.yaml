@@ -24,5 +24,8 @@ jobs:
       - name: Build app
         run: dotnet build ArtifactSpeculationBlazor.csproj --nologo
 
+      - name: Build server
+        run: dotnet build ArtifactSpeculationBlazor.Server/ArtifactSpeculationBlazor.Server.csproj --nologo
+
       - name: Run tests
         run: dotnet test ArtifactSpeculationBlazor.Tests/ArtifactSpeculationBlazor.Tests.csproj --nologo

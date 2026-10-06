@@ -11,7 +11,11 @@ namespace ArtifactSpeculationBlazor.Services;
 /// </summary>
 public static partial class EnkaService
 {
-    public const string ApiBase = "https://enka.network/api/uid/";
+    /// <summary>
+    /// Same-origin proxy endpoint served by ArtifactSpeculationBlazor.Server.
+    /// Enka sends no CORS headers, so the browser cannot call it directly.
+    /// </summary>
+    public const string ApiBase = "/enka-api/uid/";
     public const string ImageBase = "https://gi.yatta.moe/assets/UI/";
 
     [GeneratedRegex(@"^\d{9,10}$")]
