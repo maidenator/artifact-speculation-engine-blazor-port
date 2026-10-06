@@ -8,6 +8,7 @@ public partial class HuntModal : ComponentBase
 {
     [Parameter] public EventCallback<HuntItem> OnAdd { get; set; }
     [Parameter] public EventCallback OnCancel { get; set; }
+    [Parameter] public HuntItem? EditingItem { get; set; }
 
     private int _selectedSlot; // default Flower
     private int? _selectedMainStat = Stat.FlatHp;
@@ -16,6 +17,33 @@ public partial class HuntModal : ComponentBase
     private string? _domainId;
     private string? _setId;
     private string? _error;
+    private string? _loadedItemId;
+
+    protected override void OnParametersSet()
+    {
+        // Prefill once per opened item (edit mode); defaults for new items.
+        if (EditingItem?.Id != _loadedItemId)
+        {
+            _loadedItemId = EditingItem?.Id;
+            if (EditingItem is not null)
+            {
+                _selectedSlot = EditingItem.Slot;
+                _selectedMainStat = EditingItem.MainStat;
+                _substatRolls = EditingItem.Substats.ToDictionary(s => s.Stat, s => s.MinRolls);
+                _domainId = EditingItem.DomainId;
+                _setId = EditingItem.SetId;
+            }
+            else
+            {
+                _selectedSlot = 0;
+                _selectedMainStat = Stat.FlatHp;
+                _substatRolls = new();
+                _domainId = null;
+                _setId = null;
+            }
+            _error = null;
+        }
+    }
 
     private int[] MainOptions => GameData.MainStatsForSlot(_selectedSlot);
     private List<ArtifactSet> AvailableSets => GameData.AvailableSets(_domainId);

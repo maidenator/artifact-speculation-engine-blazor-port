@@ -105,7 +105,7 @@
 
         <div class="hm-footer">
             <button class="hm-btn-cancel" @onclick="OnCancel">Cancel</button>
-            <button class="hm-btn-add" @onclick="AddToHuntList" disabled="@(!_selectedMainStat.HasValue)">Add to Hunt List</button>
+            <button class="hm-btn-add" @onclick="AddToHuntList" disabled="@(!_selectedMainStat.HasValue)">@(EditingItem is null ? "Add to Hunt List" : "Save Changes")</button>
         </div>
     </div>
 </div>

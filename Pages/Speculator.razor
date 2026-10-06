@@ -47,6 +47,11 @@
                 <label class="form-label" for="resinBudget">Total Resin</label>
                 <input id="resinBudget" type="number" class="form-input"
                        @bind="_settings.ResinBudget" min="20" step="20" />
+                <div style="display: flex; flex-wrap: wrap; gap: 6px; margin-top: 0.75rem;">
+                    <button type="button" class="btn-secondary" @onclick="() => _settings.ResinBudget = 1260">1 week</button>
+                    <button type="button" class="btn-secondary" @onclick="() => _settings.ResinBudget = 5400">1 month</button>
+                    <button type="button" class="btn-secondary" @onclick="() => _settings.ResinBudget = 16200">3 months</button>
+                </div>
             </div>
 
             <div class="form-group">
@@ -160,7 +165,10 @@
                         <div style="color: #d5894b; font-weight: 700; margin-bottom: 0.5rem;">@ArtifactData.GetSlotName(hunt.Slot) Target</div>
                         <div style="color: white; font-size: 13px; margin-bottom: 0.25rem;">Main: @ArtifactData.GetMainStatName(hunt.MainStat)</div>
                         <div style="color: white; font-size: 13px;">Substats: @hunt.Substats.Count</div>
-                        <button style="background: none; border: none; color: var(--bad); font-weight: 600; cursor: pointer; padding: 0; margin-top: 0.75rem;" @onclick="() => RemoveHuntItem(hunt.Id)">Remove</button>
+                        <div style="display: flex; gap: 1rem; margin-top: 0.75rem;">
+                            <button style="background: none; border: none; color: var(--accent); font-weight: 600; cursor: pointer; padding: 0;" @onclick="() => StartEditHuntItem(hunt)">Edit</button>
+                            <button style="background: none; border: none; color: var(--bad); font-weight: 600; cursor: pointer; padding: 0;" @onclick="() => RemoveHuntItem(hunt.Id)">Remove</button>
+                        </div>
                     </div>
                 }
             }
@@ -289,7 +297,7 @@
 
 @if (_showHuntModal)
 {
-    <HuntModal OnAdd="OnAddHuntItem" OnCancel="() => _showHuntModal = false" />
+    <HuntModal EditingItem="_editingItem" OnAdd="OnAddHuntItem" OnCancel="CloseHuntModal" />
 }
 
 @code {
@@ -303,6 +311,7 @@
     private string? _runError;
     private double? _elapsedMs;
     private bool _showHuntModal;
+    private HuntItem? _editingItem;
 
     protected override async Task OnInitializedAsync()
     {
@@ -369,8 +378,23 @@
 
     private void OnAddHuntItem(HuntItem item)
     {
+        if (_editingItem is not null)
+            HuntList.Update(_editingItem.Id, item);
+        else
+            HuntList.Add(item);
+        CloseHuntModal();
+    }
+
+    private void StartEditHuntItem(HuntItem hunt)
+    {
+        _editingItem = hunt;
+        _showHuntModal = true;
+    }
+
+    private void CloseHuntModal()
+    {
         _showHuntModal = false;
-        HuntList.Add(item);
+        _editingItem = null;
     }
 
     private void RemoveHuntItem(string id)
