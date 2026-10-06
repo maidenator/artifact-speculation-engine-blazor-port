@@ -32,4 +32,21 @@ public class SimulationValidationTests
         Assert.Equal(0, SimulationValidation.ClampMinCritValue(-5));
         Assert.Equal(25, SimulationValidation.ClampMinCritValue(25));
     }
+
+    [Fact]
+    public void Normalize_DropsIncompatibleTargetMain()
+    {
+        var settings = new SimulationSettings { TargetSlot = 0, TargetMainStat = Stat.CritDMG };
+        SimulationValidation.Normalize(settings);
+        Assert.Null(settings.TargetMainStat);
+        Assert.Equal(0, settings.TargetSlot);
+    }
+
+    [Fact]
+    public void Normalize_KeepsCompatibleTargetMain()
+    {
+        var settings = new SimulationSettings { TargetSlot = 3, TargetMainStat = Stat.PyroDMG };
+        SimulationValidation.Normalize(settings);
+        Assert.Equal(Stat.PyroDMG, settings.TargetMainStat);
+    }
 }

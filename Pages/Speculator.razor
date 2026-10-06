@@ -81,6 +81,31 @@
                 </select>
             </div>
 
+            @if (_settings.Mode == SimulationMode.TargetPiece)
+            {
+                <div class="form-group" style="margin-top: 1rem;">
+                    <label class="form-label" style="font-size: 11px;" for="targetSlot">Artifact type</label>
+                    <select id="targetSlot" class="form-select" value="@(_settings.TargetSlot?.ToString() ?? "")" @onchange="OnTargetSlotChanged">
+                        <option value="">Any piece</option>
+                        @for (int i = 0; i < ArtifactData.SlotNames.Length; i++)
+                        {
+                            <option value="@i">@ArtifactData.SlotNames[i]</option>
+                        }
+                    </select>
+                </div>
+
+                <div class="form-group" style="margin-top: 1rem;">
+                    <label class="form-label" style="font-size: 11px;" for="targetMain">Main stat</label>
+                    <select id="targetMain" class="form-select" value="@(_settings.TargetMainStat?.ToString() ?? "")" @onchange="OnTargetMainChanged">
+                        <option value="">Any main stat</option>
+                        @foreach (var stat in TargetMainOptions)
+                        {
+                            <option value="@stat">@ArtifactData.GetMainStatName(stat)</option>
+                        }
+                    </select>
+                </div>
+            }
+
             <SubstatPriority Priority="_settings.Priority" PriorityChanged="OnPriorityChanged" />
 
         <button class="btn-primary @(_loading ? "loading" : "")"
@@ -319,6 +344,27 @@
     private void OnPriorityChanged(int[] priority)
     {
         _settings.Priority = priority;
+    }
+
+    private int[] TargetMainOptions =>
+        _settings.TargetSlot.HasValue
+            ? GameData.MainStatsForSlot(_settings.TargetSlot.Value)
+            : ArtifactData.MainStatNames.Keys.OrderBy(k => k).ToArray();
+
+    private void OnTargetSlotChanged(ChangeEventArgs e)
+    {
+        var raw = e.Value?.ToString();
+        _settings.TargetSlot = string.IsNullOrEmpty(raw) ? null : int.Parse(raw);
+        // Mirror React changeSlot: drop the main stat if the new slot can't have it.
+        if (_settings.TargetSlot.HasValue && _settings.TargetMainStat.HasValue
+            && !GameData.MainStatsForSlot(_settings.TargetSlot.Value).Contains(_settings.TargetMainStat.Value))
+            _settings.TargetMainStat = null;
+    }
+
+    private void OnTargetMainChanged(ChangeEventArgs e)
+    {
+        var raw = e.Value?.ToString();
+        _settings.TargetMainStat = string.IsNullOrEmpty(raw) ? null : int.Parse(raw);
     }
 
     private void OnAddHuntItem(HuntItem item)

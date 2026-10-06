@@ -32,5 +32,9 @@ public static class SimulationValidation
         settings.TopK = ClampTopK(settings.TopK);
         settings.MinCritValue = ClampMinCritValue(settings.MinCritValue);
         settings.Priority ??= [];
+        // An impossible slot+main pair can never match — drop the main stat.
+        if (settings.TargetSlot.HasValue && settings.TargetMainStat.HasValue
+            && !GameData.MainStatsForSlot(settings.TargetSlot.Value).Contains(settings.TargetMainStat.Value))
+            settings.TargetMainStat = null;
     }
 }
