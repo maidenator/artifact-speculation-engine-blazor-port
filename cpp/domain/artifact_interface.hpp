@@ -6,6 +6,7 @@
 
 #include "simulation_types.hpp"
 #include "serializer.hpp"
+#include "values.hpp"
 #include "../artifact/types.hpp"
 #include "../artifact/random_utils.hpp"
 #include "../artifact/generator.hpp"
@@ -20,10 +21,13 @@ public:
     }
 
     std::string generateBatchJson(int count, bool upgrade) {
+        if (count <= 0) {
+            return "[]";
+        }
         std::vector<Artifact> batch;
-        batch.reserve(count);
+        batch.reserve(static_cast<size_t>(count));
         for (int i = 0; i < count; ++i) {
-            Artifact art = generator::generateArtifact(masterRng);
+            Artifact art = generator::generateArtifact(masterRng, false);
             if(upgrade) {
                 for (int step = 0; step < 5; ++step) {
                     generator::upgradeArtifactOnce(art, masterRng);
@@ -35,14 +39,17 @@ public:
     }
 
     std::string generateBatchWithHistoryJson(int count) {
+        if (count <= 0) {
+            return "[]";
+        }
         std::vector<std::vector<Artifact>> batches;
-        batches.reserve(count);
+        batches.reserve(static_cast<size_t>(count));
         for (int i = 0; i < count; ++i) {
             std::vector<Artifact> history;
             history.reserve(6);
-            
+
             // Base artifact (+0)
-            Artifact art = generator::generateArtifact(masterRng);
+            Artifact art = generator::generateArtifact(masterRng, false);
             history.push_back(art);
             
             // Upgrade 5 times to +20, saving state each time
@@ -80,10 +87,11 @@ inline SimulationSummary ArtifactInterface::executeSimulation(const SimulationCo
     reservoir.reserve(effectiveK + 1);
 
     auto updateReservoir = [&](const Artifact &art, double score) {
-        reservoir.push_back({art, score});
-        std::sort(reservoir.begin(), reservoir.end(), [](const ScoredArtifact &a, const ScoredArtifact &b) {
-            return a.score > b.score;
-        });
+        // Common case: full and not good enough — no copy, no sort.
+        if (reservoir.size() == effectiveK && score <= reservoir.back().score) return;
+        auto it = std::upper_bound(reservoir.begin(), reservoir.end(), score,
+            [](double s, const ScoredArtifact &e) { return s > e.score; });
+        reservoir.insert(it, {art, score});
         if (reservoir.size() > effectiveK) {
             reservoir.pop_back();
         }
@@ -120,23 +128,29 @@ inline SimulationSummary ArtifactInterface::executeSimulation(const SimulationCo
         if (config.mode == SimulationMode::FixedResin && summary.totalResinSpent >= config.resinBudget) {
             break;
         }
-        if (config.mode == SimulationMode::TargetGoal && summary.targetAchieved) {
-            break;
-        }
-        if (config.mode == SimulationMode::TargetGoal && config.resinBudget > 0 && summary.totalResinSpent >= config.resinBudget) {
-            break;
+        if (config.mode == SimulationMode::TargetGoal) {
+            if (summary.targetAchieved) {
+                break;
+            }
+            // A non-positive budget with an unreached goal can never terminate.
+            if (config.resinBudget <= 0) {
+                break;
+            }
+            if (summary.totalResinSpent >= config.resinBudget) {
+                break;
+            }
         }
 
-        summary.totalResinSpent += 20;
+        summary.totalResinSpent += distributions::RESIN_PER_RUN;
         summary.domainRunsCompleted++;
 
-        int dropsThisRun = (rng::fastUniformRange(1, 1000, masterRng) <= 65) ? 2 : 1;
+        int dropsThisRun = (rng::fastUniformDouble(masterRng) < distributions::DOUBLE_5_STAR_CHANCE) ? 2 : 1;
 
         for (int d = 0; d < dropsThisRun; ++d) {
             summary.totalFiveStarsFound++;
 
-            if (rng::fastUniformRange(0, 1, masterRng) == 0) {
-                Artifact art = generator::generateArtifact(masterRng);
+            if (rng::fastUniformDouble(masterRng) < distributions::SET_SPLIT_RATE) {
+                Artifact art = generator::generateArtifact(masterRng, false);
                 if (processPiece(art) && config.mode == SimulationMode::TargetGoal) {
                     summary.targetAchieved = true;
                     break;
@@ -146,13 +160,18 @@ inline SimulationSummary ArtifactInterface::executeSimulation(const SimulationCo
             }
         }
 
+        // No post-win strongbox processing: the goal was already met.
+        if (summary.targetAchieved) {
+            break;
+        }
+
         if (config.useStrongBox) {
             while (junkFiveStarCount >= 3) {
                 junkFiveStarCount -= 3;
                 summary.strongboxRollsCompleted++;
                 summary.totalFiveStarsFound++;
 
-                Artifact boxArt = generator::generateArtifact(masterRng);
+                Artifact boxArt = generator::generateArtifact(masterRng, false);
                 if (processPiece(boxArt) && config.mode == SimulationMode::TargetGoal) {
                     summary.targetAchieved = true;
                     break;
@@ -161,7 +180,7 @@ inline SimulationSummary ArtifactInterface::executeSimulation(const SimulationCo
         }
     }
 
-    summary.equivalentDays = static_cast<double>(summary.totalResinSpent) / 180.0;
+    summary.equivalentDays = values::resinToDaysExact(summary.totalResinSpent);
     summary.topArtifacts.reserve(reservoir.size());
     for (const auto &entry : reservoir) {
         summary.topArtifacts.push_back(entry.art);

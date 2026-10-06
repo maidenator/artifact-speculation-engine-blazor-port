@@ -20,8 +20,10 @@ class Xoshiro256 {
     public:
         explicit Xoshiro256(uint64_t seed) {
             /*
-                Mini SplitMix65 generator to expand a single seed
-                into 4 healthy, non-zero state values
+                Seed-expansion in the style of SplitMix64: mix a single seed
+                into 4 healthy, non-zero state values. Note this is not the
+                canonical SplitMix64 (which adds the golden-ratio constant
+                between outputs); it only needs to decorrelate the 4 lanes.
             */
            uint64_t z = seed + GOLDEN_RATIO_CONST;
            for(int i = 0; i < 4; ++i) {
@@ -61,19 +63,23 @@ class Xoshiro256 {
 inline uint32_t fastUniform(int32_t bound, Xoshiro256 &rng) {
     assert(bound > 0 && "Bound must be a positive integer");
 
-    uint32_t ubound = static_cast<uint32_t>(bound);
+    uint64_t ubound = static_cast<uint64_t>(bound);
     uint64_t x = rng();
-    
-    // Prevents overflow from the 64-bit rng output    
-    __uint128_t m = static_cast<__uint128_t>(x) * ubound;
-    uint32_t l = static_cast<uint32_t>(m);
 
+    // NOTE: __uint128_t is a GCC/Clang extension (fine for Emscripten and
+    // MinGW builds here) and will not compile on MSVC.
+    // Prevents overflow from the 64-bit rng output
+    __uint128_t m = static_cast<__uint128_t>(x) * ubound;
+    uint64_t l = static_cast<uint64_t>(m);
+
+    // Correct Lemire rejection compares the full low 64 bits, not just the
+    // low 32: reject while l falls in the biased zone [0, t).
     if (l < ubound) {
-        uint32_t threshold = -ubound % ubound;
-        while (l < threshold) {
+        const uint64_t t = (0 - ubound) % ubound;
+        while (l < t) {
             x = rng();
             m = static_cast<__uint128_t>(x) * ubound;
-            l = static_cast<uint32_t>(m);
+            l = static_cast<uint64_t>(m);
         }
     }
 
@@ -89,11 +95,19 @@ inline uint32_t fastUniform(int32_t bound, Xoshiro256 &rng) {
  */
 inline int32_t fastUniformRange(int32_t min, int32_t max, Xoshiro256 &rng) {
     assert(min <= max && "Minimum must be less than or equal to maximum");
-    
+
     int32_t range = (max - min) + 1;
 
     uint32_t randomOffset = fastUniform(range, rng);
-    
+
     return min + static_cast<int32_t>(randomOffset);
+}
+
+/**
+ * Uniform double in [0, 1), using the top 53 bits of one rng output.
+ * For probability checks (e.g. `fastUniformDouble(rng) < CHANCE`).
+ */
+inline double fastUniformDouble(Xoshiro256 &rng) {
+    return static_cast<double>(rng() >> 11) * (1.0 / 9007199254740992.0);
 }
 }

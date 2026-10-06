@@ -1,6 +1,10 @@
-﻿$ErrorActionPreference = "Stop"
+﻿# NOTE: $ErrorActionPreference stays at its default (Continue) on purpose:
+# Emscripten logs INFO lines to stderr (first-time sysroot builds, -flto),
+# and those must not abort the script. Failures are caught via $LASTEXITCODE.
 
-# 1. Activate Emscripten environment
+# 1. Activate Emscripten environment (quiet: the activation script prints
+# setup noise to stderr).
+$env:EMSDK_QUIET = "1"
 $emsdkPath = "$PSScriptRoot\emscripten\emsdk\emsdk_env.ps1"
 
 if (-not (Test-Path $emsdkPath)) {
@@ -15,17 +19,22 @@ if (-not (Test-Path $emsdkPath)) {
 New-Item -ItemType Directory -Force -Path "wwwroot/wasm" | Out-Null
 
 # 3. Compile C++ to WebAssembly - NO ES6 export (Blazor uses plain scripts via JSInterop)
+# Review §2: no -profiling, real exceptions, assertions off in release.
 em++ -O3 `
-    -profiling `
+    -flto `
+    -DNDEBUG `
     -std=c++20 `
     --bind `
+    -fwasm-exceptions `
+    --closure 1 `
     -s WASM=1 `
     -s MODULARIZE=1 `
     -s 'EXPORT_NAME="createArtifactEngine"' `
     -s ALLOW_MEMORY_GROWTH=1 `
-    -s MAXIMUM_MEMORY=512MB `
-    -s NO_DISABLE_EXCEPTION_CATCHING `
-    -s ENVIRONMENT='web,worker' `
+    -s MAXIMUM_MEMORY=256MB `
+    -s FILESYSTEM=0 `
+    -s ASSERTIONS=0 `
+    -s ENVIRONMENT='web' `
     -I build/_deps/nlohmann_json-src/include `
     -I cpp `
     -I cpp/artifact `

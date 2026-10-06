@@ -10,17 +10,17 @@ namespace generator {
  * Crit DMG + (Crit Rate * 2)
  * 
  * @param art The artifact object containing the substats to evaluate
- * @return float The total calculated crit value
+ * @return double The total calculated crit value
  */
-inline float calculateCritValue(const Artifact &art) {
-    float critValue = 0.0f;
-    for(size_t i  = 0; i < art.substatCount; ++i) {
+inline double calculateCritValue(const Artifact &art) {
+    double critValue = 0.0;
+    for(size_t i  = 0; i < static_cast<size_t>(art.substatCount); ++i) {
         const auto &sub = art.subStats[i];
         
         if(sub.type == ArtifactSubstat::critDmg)
             critValue += sub.value;
         if(sub.type == ArtifactSubstat::critRate)
-            critValue += sub.value * 2.0f;
+            critValue += sub.value * 2.0;
     }
     return critValue;
 }
@@ -66,7 +66,7 @@ inline MainStat generateMainStat(ArtifactSlot pieceType, rng::Xoshiro256 &rng) {
  */
 inline double rollSubstatValue(ArtifactSubstat subStat, rng::Xoshiro256 &rng) {
     auto subStats = distributions::getSubstatValues(subStat);
-    double rolledValue = subStats[rng::fastUniformRange(0, 3, rng)];
+    double rolledValue = subStats[static_cast<size_t>(rng::fastUniformRange(0, 3, rng))];
     return std::round(rolledValue * 10.0) / 10.0;
 }
 
@@ -80,21 +80,17 @@ inline double rollSubstatValue(ArtifactSubstat subStat, rng::Xoshiro256 &rng) {
 inline Artifact generateArtifactSubstats(MainStat mainStat, rng::Xoshiro256 &rng) {
     Artifact art;
 
-    // 1. Identify if we have a four liner. (1 in 5 chance for an artifact to start with four stats.)
-    bool isFourLiner = rng::fastUniformRange(0, 4, rng) == 0;
+    // 1. Identify if we have a four liner (20% chance to start with four stats).
+    bool isFourLiner = rng::fastUniformDouble(rng) < distributions::FOUR_LINER_CHANCE;
 
-    // 2. Initialize a pool of 10 unselected Substats
+    // 2. Initialize a pool of 10 unselected Substats.
+    // ALL_SUBSTATS is in ArtifactSubstat enum order, so index directly.
     std::array<bool, 10> selectedStats = {false};
-    int substatSize = distributions::ALL_SUBSTATS.size();
+    constexpr size_t substatSize = distributions::ALL_SUBSTATS.size();
 
-    // 3. Iterate through the substats and mark mainStat as selected so we cannot pick it again
+    // 3. Mark mainStat as selected so we cannot pick it again.
     if (auto matchingSub = distributions::mainStatToSubStat(mainStat.type)) {
-        for (size_t i = 0; i < substatSize; ++i) {
-            if (distributions::ALL_SUBSTATS[i] == *matchingSub) {
-                selectedStats[i] = true;
-                break;
-            }
-        }
+        selectedStats[static_cast<size_t>(*matchingSub)] = true;
     }
 
     // 4. Determine how many substats to roll
@@ -110,10 +106,10 @@ inline Artifact generateArtifactSubstats(MainStat mainStat, rng::Xoshiro256 &rng
     // 5. Loop to pick each substat
     for(int i = 0; i < substatCount; ++i) {
         // Roll random threshold
-        uint32_t roll = rng::fastUniformRange(0, totalWeight - 1, rng);
+        uint32_t roll = rng::fastUniformRange(0, static_cast<int32_t>(totalWeight - 1), rng);
         uint32_t sum = 0;
         size_t chosenIndex = 0;
-        
+
         // Find the winning substat
         for(size_t j = 0; j < substatSize; ++j) {
             if(selectedStats[j]) continue;
@@ -127,7 +123,7 @@ inline Artifact generateArtifactSubstats(MainStat mainStat, rng::Xoshiro256 &rng
 
         // Mark as selected so it won't repeat
         selectedStats[chosenIndex] = true;
-        
+
         // Subtract the weight of the chosen stat from the total weight
         auto substatType = distributions::ALL_SUBSTATS[chosenIndex];
         totalWeight -= distributions::getSubStatWeight(substatType);
@@ -149,20 +145,25 @@ inline Artifact generateArtifactSubstats(MainStat mainStat, rng::Xoshiro256 &rng
  * @return String The generated id with the format "art_[id]".
  */
 inline std::string generateArtifactId(rng::Xoshiro256 &rng) {
-    return "art_" + std::to_string(rng::fastUniformRange(100000000ULL, 999999999ULL, rng));
+    return "art_" + std::to_string(rng::fastUniformRange(100000000, 999999999, rng));
 }
 
 /**
- * Generates a complete random 5-star Genshin Impact artifact, 
- * including a unique ID, slot, main stat, and randomized substats.
- * 
+ * Generates a complete random 5-star Genshin Impact artifact,
+ * including slot, main stat, and randomized substats.
+ * IDs cost an RNG draw plus a heap string each; only request one when the
+ * caller actually keeps it (batch paths), never in the hot simulation loop.
+ *
  * @param rng Reference to the Xoshiro256 random engine.
+ * @param assignId Whether to generate the "art_[id]" identifier.
  * @return Artifact The fully generated artifact object.
  */
-inline Artifact generateArtifact(rng::Xoshiro256 &rng) {
+inline Artifact generateArtifact(rng::Xoshiro256 &rng, bool assignId = true) {
     Artifact art;
 
-    art.id = generateArtifactId(rng);
+    if (assignId) {
+        art.id = generateArtifactId(rng);
+    }
     art.slot = static_cast<ArtifactSlot>(rng::fastUniformRange(0, 4, rng));
     art.level = 0;
     
@@ -185,29 +186,19 @@ inline Artifact generateArtifact(rng::Xoshiro256 &rng) {
 inline void upgradeArtifactOnce(Artifact &art, rng::Xoshiro256 &rng) {
     assert(art.level < 20 && "Artifact level must be less than 20");
 
-    size_t totalPoolSize = distributions::ALL_SUBSTATS.size();
-    
+    constexpr size_t totalPoolSize = distributions::ALL_SUBSTATS.size();
+
     // Initialize a pool of 10 unselected Substats
     std::array<bool, 10> selectedStats = {false};
 
     // Mark the Main Stat as selected
     if (auto matchingSub = distributions::mainStatToSubStat(art.mainStat.type)) {
-        for (size_t i = 0; i < totalPoolSize; ++i) {
-            if (distributions::ALL_SUBSTATS[i] == *matchingSub) {
-                selectedStats[i] = true;
-                break;
-            }
-        }
+        selectedStats[static_cast<size_t>(*matchingSub)] = true;
     }
 
     // Mark all *currently existing* substats as selected
-    for (size_t i = 0; i < art.substatCount; ++i) {
-        for (size_t j = 0; j < totalPoolSize; ++j) {
-            if (distributions::ALL_SUBSTATS[j] == art.subStats[i].type) {
-                selectedStats[j] = true;
-                break;
-            }
-        }
+    for (size_t i = 0; i < static_cast<size_t>(art.substatCount); ++i) {
+        selectedStats[static_cast<size_t>(art.subStats[i].type)] = true;
     }
 
     // Check if the artifact is a four liner
@@ -222,7 +213,7 @@ inline void upgradeArtifactOnce(Artifact &art, rng::Xoshiro256 &rng) {
             }
         }
 
-        uint32_t roll = rng::fastUniformRange(0, totalWeight - 1, rng);
+        uint32_t roll = rng::fastUniformRange(0, static_cast<int32_t>(totalWeight - 1), rng);
         uint32_t sum = 0;
         size_t chosenIndex = 0;
 
@@ -245,7 +236,7 @@ inline void upgradeArtifactOnce(Artifact &art, rng::Xoshiro256 &rng) {
         art.substatCount = 4;
     } else {
         // Case B: Boosting an existing substat (Randomly pick one of the 4 to upgrade)
-        int upgradeIndex = rng::fastUniformRange(0, 3, rng);
+        size_t upgradeIndex = static_cast<size_t>(rng::fastUniformRange(0, 3, rng));
         art.subStats[upgradeIndex].value += rollSubstatValue(art.subStats[upgradeIndex].type, rng);
         art.subStats[upgradeIndex].rolls++;
     }

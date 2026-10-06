@@ -63,11 +63,11 @@ struct MainStat {
 
 struct Artifact {
     std::optional<std::string> id;
-    int rarity;
+    int rarity = 0;
 
     std::string setName;
     std::optional<std::string> pieceName;
-    ArtifactSlot slot;
+    ArtifactSlot slot{};
     
     MainStat mainStat;
     int level = 0;

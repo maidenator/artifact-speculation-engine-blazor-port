@@ -4,6 +4,7 @@
 #include <array>
 #include <span>
 #include <cstdint>
+#include <stdexcept>
 #include "types.hpp"
 
 namespace distributions {
@@ -89,7 +90,7 @@ inline std::span<const MainStatWeight> getMainStatWeights(ArtifactSlot slot) {
         case ArtifactSlot::goblet:  return GOBLET_MAIN_STATS;
         case ArtifactSlot::circlet: return CIRCLET_MAIN_STATS;
     }
-    return {};
+    throw std::invalid_argument("getMainStatWeights: invalid artifact slot");
 }
 
 struct StatScaling {
