@@ -100,3 +100,20 @@ public class SimulationSettings
     public int? TargetMainStat { get; set; }
     public int[] Priority { get; set; } = [];
 }
+
+public class SubstatWeight
+{
+    [JsonPropertyName("stat")]
+    public int Stat { get; set; }
+
+    [JsonPropertyName("weight")]
+    public double Weight { get; set; }
+
+    public SubstatWeight() { }
+
+    public SubstatWeight(int stat, double weight)
+    {
+        Stat = stat;
+        Weight = weight;
+    }
+}

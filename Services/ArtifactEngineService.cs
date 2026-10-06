@@ -71,11 +71,21 @@ public class ArtifactEngineService : IAsyncDisposable
         await SetSeedAsync(DateTimeOffset.UtcNow.ToUnixTimeMilliseconds());
 
         var resultJson = await _js.InvokeAsync<string>("artifactEngine.runSimulation", configJson);
-        return JsonSerializer.Deserialize<SimulationResult>(resultJson, JsonOptions) ?? new();
+        var result = JsonSerializer.Deserialize<SimulationResult>(resultJson, JsonOptions) ?? new();
+
+        // Client-side re-sort parity with the React frontend: the C++ engine
+        // already ranks by these weights, but re-sorting guards against drift.
+        var weights = ScoringService.WeightsFromPriority(settings.Priority ?? []);
+        ScoringService.SortByScore(result.TopArtifacts, weights);
+        if (result.TopArtifacts.Count > settings.TopK)
+            result.TopArtifacts = result.TopArtifacts.GetRange(0, settings.TopK);
+
+        return result;
     }
 
-    private static string BuildSimulationConfig(SimulationSettings settings)
+    public static string BuildSimulationConfig(SimulationSettings settings)
     {
+        var weights = ScoringService.WeightsFromPriority(settings.Priority ?? []);
         var config = new Dictionary<string, object>
         {
             ["mode"] = (int)settings.Mode,
@@ -83,7 +93,7 @@ public class ArtifactEngineService : IAsyncDisposable
             ["topK"] = settings.TopK,
             ["useStrongBox"] = settings.UseStrongBox,
             ["minCritValue"] = settings.MinCritValue,
-            ["substatWeights"] = Array.Empty<object>()
+            ["substatWeights"] = weights
         };
 
         if (settings.Mode == SimulationMode.TargetPiece)
